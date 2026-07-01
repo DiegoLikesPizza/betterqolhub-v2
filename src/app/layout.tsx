@@ -22,7 +22,7 @@ export default function RootLayout({
             </Link>
             <ul className="navbar-menu">
               <li><Link href="/" className="navbar-link">Home</Link></li>
-              <li><Link href="/clients" className="navbar-link">Clients</Link></li>
+              <li><Link href="/listings" className="navbar-link">Listings</Link></li>
               <li><a href="https://discord.gg/E56QxrW9Jt" target="_blank" rel="noreferrer" className="navbar-link">Discord</a></li>
             </ul>
           </div>
@@ -34,9 +34,9 @@ export default function RootLayout({
         
         <footer className="footer">
           <div className="container">
-            <p style={{ fontWeight: 600, color: '#fff', marginBottom: '0.5rem' }}>Better QOLHub</p>
+            <p className="pixel-brand">Better QOLHub</p>
             <p>© 2026 Better QOLHub. Built for the Skyblock community.</p>
-            <p style={{ opacity: 0.6, marginTop: '0.5rem' }}>Open source, transparent, and always improving.</p>
+            <p style={{ opacity: 0.6, marginTop: '0.5rem' }}>An extension of the Discord — vetted, transparent, always improving.</p>
           </div>
         </footer>
       </body>

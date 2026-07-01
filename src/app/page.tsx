@@ -4,24 +4,27 @@ export default function Home() {
   return (
     <div className="container">
       <section className="hero">
-        <h1 className="hero-title">Better QOLHub</h1>
+        <div className="hero-eyebrow pixel">Hypixel Skyblock</div>
+        <h1 className="hero-title">
+          Better <span className="accent">QOLHub</span>
+        </h1>
         <p className="hero-subtitle">
-          Your trusted source for quality-of-life improvements. Discover vetted, open-source solutions that enhance your Skyblock experience with complete transparency and security.
+          The community-vetted hub for Skyblock cheat clients, macros, legit mods, and shops. Every listing is checked before it lands, then piped straight to the Discord.
         </p>
         <div className="gap-4" style={{ justifyContent: 'center' }}>
-          <Link href="/clients" className="btn btn-primary">
-            Explore Clients
+          <Link href="/listings" className="btn btn-primary">
+            Browse Listings
           </Link>
           <a href="https://discord.gg/E56QxrW9Jt" target="_blank" rel="noreferrer" className="btn btn-secondary">
-            Join Community
+            Join the Discord
           </a>
         </div>
       </section>
 
       <section>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: 800 }}>Built with trust in mind</h2>
-          <p style={{ color: 'var(--text-secondary)' }}>Every feature designed to keep you safe and informed.</p>
+        <div className="section-head">
+          <h2 className="section-title">Vetted before it drops</h2>
+          <p className="section-sub">Every tool is checked so you know what you&apos;re installing.</p>
         </div>
 
         <div className="bento-grid">

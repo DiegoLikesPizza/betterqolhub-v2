@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { isCategoryKey } from '@/lib/categories';
 
 const API_KEY = process.env.API_KEY;
 
@@ -18,13 +19,18 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const resolvedParams = await params;
     const body = await request.json();
-    const updatedMod = await prisma.mod.update({
+
+    if (body.category !== undefined && !isCategoryKey(body.category)) {
+      return NextResponse.json({ error: 'Invalid category' }, { status: 400 });
+    }
+
+    const updatedListing = await prisma.listing.update({
       where: { id: resolvedParams.id },
       data: body,
     });
-    return NextResponse.json(updatedMod, { status: 200 });
+    return NextResponse.json(updatedListing, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to update mod' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update listing' }, { status: 500 });
   }
 }
 
@@ -35,11 +41,11 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
   try {
     const resolvedParams = await params;
-    await prisma.mod.delete({
+    await prisma.listing.delete({
       where: { id: resolvedParams.id },
     });
-    return NextResponse.json({ message: 'Mod deleted successfully' }, { status: 200 });
+    return NextResponse.json({ message: 'Listing deleted successfully' }, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to delete mod' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to delete listing' }, { status: 500 });
   }
 }

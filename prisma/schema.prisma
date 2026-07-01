@@ -7,14 +7,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Mod {
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Listing {
   id          String   @id @default(cuid())
   name        String
   description String
-  developer   String
-  downloadUrl String
-  sourceUrl   String
-  isTrusted   Boolean  @default(true)
+  category     String
+  developer    String?
+  url          String
+  secondaryUrl String?
+  isTrusted    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
