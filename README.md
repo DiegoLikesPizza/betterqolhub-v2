@@ -36,6 +36,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `AUTH_SECRET` | NextAuth signing secret — generate with `npx auth secret` |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Read only by `npm run seed` to create the first admin; safe to remove afterwards |
 | `API_KEY` | Bearer token for programmatic writes to `/api/listings` (used by the Discord bot) |
+| `NEXT_PUBLIC_SITE_URL` | Canonical site URL, used for absolute links (e.g. OG images) |
+| `DISCORD_BOT_URL` / `DISCORD_BOT_SECRET` | Internal webhook the app calls to mirror listing/review events and DM users (linking, password reset) |
 
 ## Layout
 
@@ -45,17 +47,23 @@ src/
     page.tsx              Landing page
     listings/             Public catalog — server fetch + client-side category tabs
     listings/[id]/        Listing detail page and its review form/list
-    (account)/            Public sign-in, registration, and the logout action
-    admin/                Admin dashboard: stats, moderation, listing + member management
+    modpacks/, impressum/ Static pages
+    go/[id]/               Listing click-through redirect (feeds stats.ts)
+    download/[file]/       Proxied file download redirect
+    (account)/            Sign-in, registration, settings (username/password/Discord link)
+    admin/(dashboard)/    Admin dashboard: layout.tsx gates on ADMIN role; listings/members/reviews/traffic tabs
     api/listings/         REST API: public GET, Bearer-authed POST/PUT/DELETE
   lib/categories.ts       Authoritative category list (key → label → rarity → colour)
-  lib/reviews.ts          Rating validation and aggregation
+  lib/reviews.ts, pricing.ts, stats.ts, emoji.ts   Rating, pricing badge, view-count, and emoji helpers
   lib/authz.ts            currentUser / requireUser / requireAdmin
+  lib/discord-bot.ts      Client for the internal Discord bot webhook (events, DM linking)
   auth.ts                 NextAuth configuration (role baked into the JWT)
   proxy.ts                Optimistic session gate over /admin/*
 prisma/
-  schema.prisma           User + Listing + Review models
+  schema.prisma           User, Listing, Review, DiscordLink, PasswordReset, ListingStat, PageStat models
   seed.mjs                Admin bootstrap + optional listing import
+scripts/
+  resync-listings.mjs, resync-reviews.mjs   One-off scripts to resync data with the Discord bot
 ```
 
 ## Accounts and reviews
@@ -75,7 +83,7 @@ delete their own review; an admin can delete any.
 `src/proxy.ts` runs on every request and can only check that *a* session cookie
 exists — the JWT is encrypted and Proxy must not hit the database. Since any
 member has a session cookie, **Proxy does not keep members out of `/admin`**. The
-real checks are `currentUser()` in `src/app/admin/page.tsx` and `requireAdmin()`
+real checks are `currentUser()` in `src/app/admin/(dashboard)/layout.tsx` and `requireAdmin()`
 inside every admin server action. Server actions are POST endpoints that can be
 invoked directly, so each one re-checks rather than trusting the page it renders in.
 
@@ -83,7 +91,7 @@ invoked directly, so each one re-checks rather than trusting the page it renders
 
 `GET /api/listings` is public and accepts an optional `?category=` filter, validated against `CATEGORY_KEYS`.
 
-`POST /api/listings`, `PUT /api/listings/:id`, and `DELETE /api/listings/:id` require an `Authorization: Bearer $API_KEY` header. Writes accept only `name`, `description`, `category`, `developer`, `url`, `secondaryUrl`, and `isTrusted` — any other field in the body is ignored.
+`POST /api/listings`, `PUT /api/listings/:id`, and `DELETE /api/listings/:id` require an `Authorization: Bearer $API_KEY` header. Writes accept only `name`, `description`, `category`, `developer`, `url`, `secondaryUrl`, `isTrusted`, `pricing`, and `price` — any other field in the body is ignored.
 
 ```bash
 curl -X POST http://localhost:3000/api/listings \
@@ -94,7 +102,7 @@ curl -X POST http://localhost:3000/api/listings \
 
 ## Adding a category
 
-Edit `src/lib/categories.ts` — the site, API validation, admin form, and bot all read from that one list. No migration is needed; `category` is stored as a validated string because SQLite has no native enums.
+Edit `src/lib/categories.ts` — the site, API validation, admin form, and bot all read from that one list. No migration is needed; `category` is stored as a validated string (not a Postgres enum) so this list stays a plain code change.
 
 ## Deploying
 
