@@ -6,12 +6,17 @@
 // `color` uses authentic Minecraft chat colour codes (the §-codes Skyblock item
 // rarities are drawn in) so the palette reads as native to players, and the hue
 // encodes the category: green = safe/legit, red = risky/cheat, gold = economy.
+//
+// The palette is all that is borrowed. Categories used to also carry a rarity
+// *word* ("Mythic", "Legendary") shown next to the label; those were dropped
+// because they ranked listings in a way nothing here actually means — a shop is
+// not more legendary than a mod.
 export const CATEGORIES = [
-  { key: 'CHEAT_CLIENT', label: 'Cheat Clients', rarity: 'Special', color: '#FF5555' },
-  { key: 'MACRO_CLIENT', label: 'Macro Clients', rarity: 'Mythic', color: '#FF55FF' },
-  { key: 'LEGIT_MOD', label: 'Legit Mods', rarity: 'Uncommon', color: '#55FF55' },
-  { key: 'SHOP', label: 'Shops', rarity: 'Legendary', color: '#FFAA00' },
-  { key: 'OTHER', label: 'Other', rarity: 'Rare', color: '#55FFFF' },
+  { key: 'CHEAT_CLIENT', label: 'Cheat Clients', color: '#FF5555' },
+  { key: 'MACRO_CLIENT', label: 'Macro Clients', color: '#FF55FF' },
+  { key: 'LEGIT_MOD', label: 'Legit Mods', color: '#55FF55' },
+  { key: 'SHOP', label: 'Shops', color: '#FFAA00' },
+  { key: 'OTHER', label: 'Other', color: '#55FFFF' },
 ] as const;
 
 export type CategoryKey = (typeof CATEGORIES)[number]['key'];
@@ -28,10 +33,6 @@ export function categoryLabel(key: string): string {
 
 export function categoryColor(key: string): string {
   return CATEGORIES.find((c) => c.key === key)?.color ?? '#FFFFFF';
-}
-
-export function categoryRarity(key: string): string {
-  return CATEGORIES.find((c) => c.key === key)?.rarity ?? 'Common';
 }
 
 // Listings link out to a Discord server or website (no direct downloads), so

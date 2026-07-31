@@ -1,0 +1,26 @@
+[
+  {
+    "id": "cmr221v0j00002hse6es1p1v3",
+    "name": "Raven Client",
+    "description": "Cheat client Discord",
+    "category": "CHEAT_CLIENT",
+    "developer": null,
+    "url": "https://discord.gg/raven",
+    "secondaryUrl": "https://raven.example",
+    "isTrusted": true,
+    "createdAt": "2026-07-01T12:31:51.619Z",
+    "updatedAt": "2026-07-01T12:31:51.619Z"
+  },
+  {
+    "id": "cmr221v2h00012hse93iorm4i",
+    "name": "Renamed OK",
+    "description": "Buy coins",
+    "category": "SHOP",
+    "developer": null,
+    "url": "https://coinshop.example",
+    "secondaryUrl": null,
+    "isTrusted": true,
+    "createdAt": "2026-07-01T12:31:51.690Z",
+    "updatedAt": "2026-07-29T10:01:53.426Z"
+  }
+]

@@ -3,16 +3,84 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Hosted Postgres (Neon, Supabase, ...) serves queries through a connection
+  // pooler that cannot run DDL. `directUrl` is used by `prisma migrate` only;
+  // set it to the unpooled connection string. Locally the two are the same.
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+// Unlike `Listing.category` — which is a validated String because the list is
+// owned by src/lib/categories.ts and changes without a migration — roles are a
+// closed set baked into authorization logic, so a native enum fits.
+enum Role {
+  USER
+  ADMIN
+}
+
+/// What a listing costs. FREEMIUM is included because a free tier plus a paid
+/// "premium" is the normal shape for clients in this space — without it, admins
+/// would have to mislabel those as one or the other.
+enum Pricing {
+  FREE
+  PAID
+  FREEMIUM
 }
 
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
   passwordHash String
+  role         Role     @default(USER)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // Set only once a DM code has been verified. discordId is the snowflake and
+  // is the durable identifier — discordUsername is a display cache, since
+  // Discord usernames can change.
+  discordId       String?   @unique
+  discordUsername String?
+  discordLinkedAt DateTime?
+
+  /// Null means the username has never been changed, so the cooldown does not
+  /// apply to a first change.
+  usernameChangedAt DateTime?
+
+  reviews       Review[]
+  discordLink   DiscordLink?
+  passwordReset PasswordReset?
+}
+
+/// A pending password reset, delivered as a code over Discord DM. One per user:
+/// requesting again replaces the previous code. Deleted once used.
+model PasswordReset {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  code      String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+/// A pending Discord verification. One per user: requesting a new code replaces
+/// the old one. Deleted once verified.
+model DiscordLink {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Resolved by the bot at request time, so the code cannot be redeemed against
+  // a different account than the one that was DM'd.
+  discordId       String
+  discordUsername String
+
+  code      String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model Listing {
@@ -24,6 +92,78 @@ model Listing {
   url          String
   secondaryUrl String?
   isTrusted    Boolean  @default(true)
+  /// Nullable rather than defaulting to FREE: the existing listings have no
+  /// pricing recorded, and claiming they are free would be inventing data about
+  /// real entries. Unset simply shows no badge until an admin sets one.
+  pricing      Pricing?
+  /// What a paid listing actually costs, as free text — "5€ / month", "$15
+  /// lifetime", "from 3€/mo". Deliberately not a number plus a currency: prices
+  /// here mix currencies, billing periods and tiers, so a structured column
+  /// would either lose information or force admins to lie. The tradeoff is that
+  /// prices cannot be sorted or compared, only shown.
+  ///
+  /// Only meaningful when `pricing` is PAID or FREEMIUM; see
+  /// src/lib/pricing.ts, which clears it otherwise.
+  price        String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  reviews Review[]
+  stats   ListingStat[]
+
+  @@index([category])
+}
+
+/// Daily counters per listing.
+///
+/// Deliberately aggregated by day rather than stored as one row per event: an
+/// event log would need an IP or a session id to be worth anything, which makes
+/// it personal data and drags in consent banners and retention rules. A counter
+/// answers "how many" without ever knowing "who", and stays small enough that
+/// nobody has to think about pruning it — roughly one row per listing per day.
+model ListingStat {
+  id        String   @id @default(cuid())
+  listingId String
+  /// Midnight UTC of the day being counted. UTC rather than local time so the
+  /// bucket a hit lands in does not shift twice a year.
+  day       DateTime @db.Date
+  views     Int      @default(0)
+  clicks    Int      @default(0)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, day])
+  @@index([day])
+}
+
+/// Daily counters for everything that is not a listing: site pages and file
+/// downloads, keyed by a short stable slug rather than a raw URL so query
+/// strings cannot fragment the counts.
+model PageStat {
+  id   String   @id @default(cuid())
+  path String
+  day  DateTime @db.Date
+  hits Int      @default(0)
+
+  @@unique([path, day])
+  @@index([day])
+}
+
+model Review {
+  id      String @id @default(cuid())
+  rating  Int // 1-5, validated in application code
+  body    String
+
+  userId    String
+  listingId String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One review per user per listing; posting again edits the existing one.
+  @@unique([userId, listingId])
+  @@index([listingId])
 }

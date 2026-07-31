@@ -1,42 +1,79 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Link from 'next/link';
+import { currentUser } from '@/lib/authz';
+import { prisma } from '@/lib/prisma';
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site';
+import { logout } from './(account)/actions';
+import NavBar from './NavBar';
+import LinkDiscordBanner from './LinkDiscordBanner';
 
 export const metadata: Metadata = {
-  title: 'Better QOLHub - Your Trusted Skyblock Hub',
-  description: 'Discover vetted, open-source solutions that enhance your Skyblock experience',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} — Your Trusted Skyblock Hub`,
+    // Pages set their own title; this keeps the brand on the end of it.
+    template: `%s — ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} — Your Trusted Skyblock Hub`,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    locale: 'en',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `${SITE_NAME} — Your Trusted Skyblock Hub`,
+    description: SITE_DESCRIPTION,
+  },
 };
 
-export default function RootLayout({
+// Discord tints an embed's left stripe with theme-color, so this is the brand
+// gold rather than the page background.
+export const viewport: Viewport = {
+  themeColor: '#ffaa00',
+  colorScheme: 'dark',
+};
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = await currentUser();
+
+  // Only asked when there is a session, so signed-out visitors cost no query.
+  const discordLinked = user
+    ? Boolean(
+        (await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { discordId: true },
+        }))?.discordId
+      )
+    : true;
+
   return (
     <html lang="en">
       <body>
-        <nav className="navbar">
-          <div className="container navbar-content">
-            <Link href="/" className="navbar-logo">
-              <span>Better QOLHub</span>
-            </Link>
-            <ul className="navbar-menu">
-              <li><Link href="/" className="navbar-link">Home</Link></li>
-              <li><Link href="/listings" className="navbar-link">Listings</Link></li>
-              <li><a href="https://discord.gg/E56QxrW9Jt" target="_blank" rel="noreferrer" className="navbar-link">Discord</a></li>
-            </ul>
-          </div>
-        </nav>
-        
+        <NavBar user={user ? { name: user.name, role: user.role } : null} logout={logout} />
+        {user && !discordLinked && <LinkDiscordBanner />}
+
         <main className="main-content">
           {children}
         </main>
-        
+
         <footer className="footer">
           <div className="container">
             <p className="pixel-brand">Better QOLHub</p>
             <p>© 2026 Better QOLHub. Built for the Skyblock community.</p>
             <p style={{ opacity: 0.6, marginTop: '0.5rem' }}>An extension of the Discord — vetted, transparent, always improving.</p>
+            <p style={{ marginTop: '0.75rem' }}>
+              <Link href="/impressum" className="footer-link">Impressum</Link>
+            </p>
           </div>
         </footer>
       </body>

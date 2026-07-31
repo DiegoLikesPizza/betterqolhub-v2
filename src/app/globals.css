@@ -106,6 +106,14 @@ a {
   text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
 }
 
+/* Single row: logo, primary links, then account controls pushed to the right. */
+.navbar-content {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  width: 100%;
+}
+
 .navbar-menu {
   display: flex;
   gap: 1.75rem;
@@ -113,13 +121,34 @@ a {
   align-items: center;
 }
 
+/* `auto` margin does the pushing, so the group stays right-aligned however many
+   items it has (signed in vs out). */
+.navbar-account { margin-left: auto; gap: 1.25rem; }
+
 .navbar-link {
   font-family: var(--font-display);
   font-size: 1rem;
   color: var(--text-secondary);
 }
 
-.navbar-link:hover, .navbar-link.active { color: var(--gold-bright); }
+.navbar-link:hover { color: var(--gold-bright); }
+
+/* Current page: gold, with an underline so it does not rely on colour alone. */
+.navbar-link.active,
+.navbar-user.active {
+  color: var(--gold);
+  position: relative;
+}
+.navbar-link.active::after,
+.navbar-user.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  background: var(--gold);
+}
 
 /* Hero */
 .hero {
@@ -295,8 +324,10 @@ a {
 .tooltip-dev { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.35rem; }
 .tooltip-lore { font-size: 0.95rem; color: var(--text-lore); line-height: 1.55; flex: 1; }
 
-/* The bold uppercase rarity line at the foot of every Skyblock tooltip. */
-.tooltip-rarity {
+/* The bold uppercase line at the foot of every Skyblock tooltip. Keeps the
+   tooltip's shape and colour; the rarity word that used to sit in front of the
+   category is gone. */
+.tooltip-category {
   font-family: var(--font-display);
   font-size: 0.9rem;
   font-weight: 700;
@@ -304,6 +335,9 @@ a {
   text-transform: uppercase;
   color: var(--rarity);
   text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
+  /* The price badge can be long ("Freemium · from 4,99 € / month"), and a card
+     is narrower than that plus the category — let it drop to its own line. */
+  overflow-wrap: break-word;
 }
 
 .tooltip-links { display: flex; gap: 0.5rem; }
@@ -382,6 +416,12 @@ a {
   border-color: var(--gold);
 }
 .form-textarea { resize: vertical; min-height: 100px; }
+.form-hint {
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
 .form-checkbox { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-family: var(--font-display); }
 .form-checkbox input { width: 1.1rem; height: 1.1rem; accent-color: var(--gold); cursor: pointer; }
 .form-alert {
@@ -411,8 +451,942 @@ a {
   .btn:hover, .bento-item:hover, .tooltip-card:hover, .filter-tab:hover { transform: none; }
 }
 
-@media (max-width: 640px) {
+/* Mobile menu ------------------------------------------------------------- */
+/* Hidden on desktop; the row itself is the navigation there. */
+.navbar-toggle { display: none; }
+
+/* Open the menu on a phone, then widen the window — React still holds `open`,
+   and the panel would hang under a bar that already shows every link. */
+@media (min-width: 721px) {
+  .navbar-mobile { display: none; }
+}
+
+/* Hamburger drawn from one span plus two pseudo-elements, so it can morph into
+   an X without swapping markup. */
+.navbar-burger,
+.navbar-burger::before,
+.navbar-burger::after {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--gold);
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+.navbar-burger { position: relative; }
+.navbar-burger::before,
+.navbar-burger::after {
+  content: '';
+  position: absolute;
+  left: 0;
+}
+.navbar-burger::before { top: -7px; }
+.navbar-burger::after { top: 7px; }
+
+.navbar-burger-open { background: transparent; }
+.navbar-burger-open::before { transform: translateY(7px) rotate(45deg); }
+.navbar-burger-open::after { transform: translateY(-7px) rotate(-45deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar-burger, .navbar-burger::before, .navbar-burger::after { transition: none; }
+}
+
+.navbar-mobile {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  /* Fully opaque, not the bar's translucency: menu rows sit directly over page
+     headings, and even a few percent of a bright title showing through reads as
+     a rendering fault. */
+  background: #0d0b14;
+  border-bottom: 2px solid var(--frame);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
+  padding: 0.5rem 0 1rem;
+  /* The navbar is z-100 and the Discord reminder banner z-90, so a panel inside
+     the navbar covers the banner rather than being cut off by it. */
+}
+
+.navbar-mobile-menu { list-style: none; }
+.navbar-mobile-menu li { display: block; }
+
+/* Full-width rows: a nav item on a phone should be a comfortable tap target,
+   not a word you have to aim at. */
+.navbar-mobile-menu a,
+.navbar-mobile-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.85rem 1.5rem;
+  font-size: 1.05rem;
+}
+.navbar-mobile-menu a:hover,
+.navbar-mobile-menu button:hover { background: rgba(52, 35, 92, 0.35); }
+
+/* The underline used for the active desktop link would sit under a full-width
+   row and read as a divider; a left bar is unambiguous. */
+.navbar-mobile-menu .active::after { display: none; }
+.navbar-mobile-menu .active { border-left: 3px solid var(--gold); }
+
+.navbar-mobile-account {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 2px solid var(--frame);
+}
+
+@media (max-width: 860px) {
+  /* Tighten before anything overflows the fixed-height bar. */
+  .navbar-content { gap: 1rem; }
   .navbar-menu { gap: 1rem; }
-  .navbar-link, .navbar-logo { font-size: 0.9rem; }
-  .navbar-logo { font-size: 1.1rem; }
+  .navbar-account { gap: 0.85rem; }
+}
+
+/* Below this the single row cannot hold logo + links + account controls: it
+   needs roughly 560px even at the smallest font sizes, so on a phone the logo
+   and "Sign out" wrapped onto two lines. */
+@media (max-width: 720px) {
+  .navbar-primary, .navbar-account { display: none; }
+
+  .navbar-content { position: relative; }
+
+  /* Centred on the bar itself, not on the space left over beside the burger —
+     so it stays put whether or not the Admin link exists. */
+  .navbar-logo {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.15rem;
+    white-space: nowrap;
+  }
+
+  .navbar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    /* 44px is the smallest reliably tappable target. */
+    width: 44px;
+    height: 44px;
+    margin-right: -0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--gold);
+  }
+}
+
+/* ==========================================================================
+   Accounts, reviews, and the admin dashboard
+   ========================================================================== */
+
+/* Shared page furniture -------------------------------------------------- */
+.narrow-page { max-width: 760px; padding-top: 8rem; padding-bottom: 4rem; }
+.page-title {
+  font-size: clamp(2.25rem, 5vw, 3.25rem);
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+}
+.page-sub { color: var(--text-secondary); font-size: 1.15rem; }
+
+.back-link {
+  display: inline-block;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  margin-bottom: 1.5rem;
+}
+.back-link:hover { color: var(--gold); }
+
+.navbar-user {
+  font-family: var(--font-display);
+  color: var(--gold);
+  font-size: 0.95rem;
+}
+.navbar-signout {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: inherit;
+  color: var(--text-secondary);
+  padding: 0;
+}
+.navbar-signout:hover { color: var(--danger); }
+.navbar-cta { color: var(--gold); }
+
+/* Ratings ---------------------------------------------------------------- */
+.rating-line { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.rating-line-link { border-top: 2px solid rgba(52, 35, 92, 0.5); padding-top: 0.7rem; }
+.rating-line-link:hover .rating-meta { color: var(--gold); }
+.rating-stars { font-size: 1.05rem; letter-spacing: 0.1em; }
+/* Values stay in text ink; only the stars carry the rating colour. */
+.rating-meta { color: var(--text-secondary); font-size: 0.9rem; }
+
+/* Pricing badge: the state, plus the concrete price when one is recorded. Sits
+   on the rarity line, colour-coded but always labelled — the word carries the
+   meaning, the colour only speeds up scanning. */
+.price-tag {
+  --price: var(--gold);
+  display: inline-block;
+  margin-left: 0.5rem;
+  /* Body font, same as the description above it. The pixel display font renders
+     digits at near-uniform width with very little to tell 6, 8 and 9 apart, so
+     an actual price in it is slow to read — which is the one thing this badge
+     exists to communicate. Slightly larger and with less tracking, because
+     Space Grotesk sits smaller than Pixelify Sans at the same size. */
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--price);
+  border: 2px solid color-mix(in srgb, var(--price) 40%, transparent);
+  background: color-mix(in srgb, var(--price) 10%, transparent);
+  border-radius: 2px;
+  padding: 0.08rem 0.4rem;
+  vertical-align: 0.1em;
+  /* Not nowrap: with a price in it the badge can be wider than a card, and
+     forcing one line pushed the layout sideways. It may wrap internally, it just
+     must not break mid-number. */
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.tooltip-name-link { display: inline-block; }
+.tooltip-name-link:hover { text-decoration: underline; }
+
+/* Listing detail --------------------------------------------------------- */
+.detail-card {
+  --rarity: var(--gold);
+  background: var(--bg-slot);
+  border: 2px solid color-mix(in srgb, var(--rarity) 40%, var(--frame));
+  border-radius: 2px;
+  padding: 2rem;
+  box-shadow: var(--shadow-block-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+.detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.detail-title {
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
+  color: var(--rarity);
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6);
+  line-height: 1.1;
+}
+
+/* Star picker ------------------------------------------------------------ */
+.star-picker { display: flex; gap: 0.25rem; }
+.star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 2rem;
+  line-height: 1;
+  padding: 0 0.1rem;
+  color: var(--frame-bright);
+  transition: color 0.12s ease, transform 0.12s ease;
+}
+.star-btn:hover { transform: translateY(-2px); }
+.star-on { color: var(--gold); text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6); }
+.star-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* Review list ------------------------------------------------------------ */
+.review-list { display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem; }
+.review-item {
+  background: var(--bg-panel);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  padding: 1.25rem 1.35rem;
+  box-shadow: var(--shadow-block);
+}
+.review-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: 0.6rem; }
+.review-author { font-family: var(--font-display); color: var(--text-primary); margin-right: 0.6rem; }
+.review-date { color: var(--text-secondary); font-size: 0.85rem; }
+.review-body { color: var(--text-lore); white-space: pre-wrap; overflow-wrap: anywhere; }
+.review-delete {
+  margin-top: 0.75rem;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-family: var(--font-display);
+}
+.review-delete:hover { color: var(--danger); }
+
+/* Admin shell ------------------------------------------------------------ */
+.admin-page { padding-top: 8rem; padding-bottom: 4rem; }
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+/* Admin section nav. Styled like the category chips on /listings so the two
+   navigations in this app read the same, and sitting on a baseline rule so it
+   is clearly a switcher rather than a row of buttons. Scrolls sideways on
+   narrow screens instead of wrapping into a second row that shifts the page. */
+.admin-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 2.5rem;
+  border-bottom: 2px solid var(--frame);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.admin-tabs::-webkit-scrollbar { display: none; }
+
+.admin-tab {
+  flex: 0 0 auto;
+  padding: 0.55rem 1.1rem;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border: 2px solid transparent;
+  border-bottom: none;
+  border-radius: 2px 2px 0 0;
+  /* Pulls each tab down onto the container's rule so the active one can cover
+     it and read as the front-most sheet. */
+  margin-bottom: -2px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.admin-tab:hover { color: var(--text-primary); background: rgba(52, 35, 92, 0.3); }
+
+.admin-tab-active {
+  color: var(--gold);
+  background: var(--bg-slot);
+  border-color: var(--frame);
+  border-bottom: 2px solid var(--bg-slot);
+}
+.admin-tab-active:hover { color: var(--gold); background: var(--bg-slot); }
+.admin-section { margin-bottom: 3rem; }
+.admin-section-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Section heading with an action beside it. Wraps rather than squeezing the
+   button, so the two never collide on a phone. */
+.admin-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.admin-section-head .admin-section-title { margin-bottom: 0; }
+.admin-section-sub { color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.25rem; }
+.admin-split { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: start; }
+.admin-split .form-card { max-width: none; }
+
+/* Stat tiles ------------------------------------------------------------- */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 3rem;
+}
+.stat-tile {
+  background: var(--bg-panel);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  padding: 1.25rem 1.35rem;
+  box-shadow: var(--shadow-block);
+}
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.4rem;
+}
+/* Proportional figures: tabular-nums is for columns, not display values. */
+.stat-value {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 2.4rem;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+.stat-hint { color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.3rem; }
+
+/* Category distribution --------------------------------------------------
+   Square bar ends rather than the usual 4px rounding: this design system is
+   deliberately blocky (2px radius throughout), so rounded caps read as
+   off-brand. Every bar is directly labelled, which doubles as the secondary
+   channel the gold/green CVD pair requires. */
+.bar-chart { list-style: none; display: flex; flex-direction: column; gap: 0.65rem; }
+.bar-row { display: grid; grid-template-columns: 8.5rem 1fr 2.5rem; align-items: center; gap: 0.85rem; }
+.bar-label { color: var(--text-secondary); font-size: 0.9rem; }
+.bar-track {
+  background: rgba(52, 35, 92, 0.35);
+  border-radius: 2px;
+  height: 18px;
+  overflow: hidden;
+}
+.bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--bar-color);
+  border-radius: 0 2px 2px 0;
+  min-width: 2px;
+}
+.bar-value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+.chart-footnote { color: var(--text-secondary); font-size: 0.85rem; margin-top: 1rem; }
+
+/* Traffic ---------------------------------------------------------------- */
+/* Views and clicks are two measures of one thing, not two categories, so they
+   share a hue family instead of taking two slots from the rarity palette: muted
+   purple for views, the site's gold for clicks, since a click is the action.
+   The legend plus the per-column title carry the meaning; colour only speeds up
+   reading the shape. */
+.stat-num { font-variant-numeric: tabular-nums; text-align: right; }
+
+.daily-chart-wrap { margin-bottom: 2rem; }
+.chart-legend { display: flex; gap: 1.25rem; margin-bottom: 0.75rem; }
+.legend-item {
+  display: flex; align-items: center; gap: 0.4rem;
+  color: var(--text-secondary); font-size: 0.85rem;
+}
+.legend-swatch { width: 0.7rem; height: 0.7rem; border-radius: 2px; }
+.legend-views { background: #6f5da8; }
+.legend-clicks { background: var(--gold); }
+
+.daily-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 140px;
+  padding: 0 0 2px;
+  border-bottom: 2px solid var(--frame);
+  /* A month of columns on a phone is narrower than a finger; let it scroll
+     rather than squeezing bars down to invisible slivers. */
+  overflow-x: auto;
+}
+.day-col {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  flex: 1 0 14px;
+  height: 100%;
+}
+.day-bar { display: block; flex: 1; border-radius: 1px 1px 0 0; min-height: 1px; }
+.day-views { background: #6f5da8; }
+.day-clicks { background: var(--gold); }
+
+.chart-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stacked, not side by side. Side by side left the page bars about 50px wide,
+   which is too short to compare lengths — the whole point of a bar. Traffic has
+   its own page now, so there is vertical room to give both full width. */
+.stats-split {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+/* Bars stop growing past the point where extra length stops adding meaning. */
+.stats-pages { max-width: 640px; }
+
+/* Needs attention -------------------------------------------------------- */
+.attention-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+.attention-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  background: var(--bg-panel);
+  border: 2px solid rgba(255, 85, 85, 0.35);
+  border-radius: 2px;
+  padding: 0.7rem 1rem;
+}
+.attention-name { font-family: var(--font-display); color: var(--text-primary); }
+.attention-name:hover { color: var(--gold); }
+.attention-meta { color: var(--text-secondary); font-size: 0.85rem; }
+
+/* Table toolbar & paging --------------------------------------------------
+   Filters sit in one row above the table, per the usual convention. */
+.table-toolbar {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.toolbar-search { flex: 1 1 14rem; min-width: 12rem; padding: 0.45rem 0.7rem; font-size: 0.9rem; }
+.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; font-size: 0.9rem; }
+.toolbar-stat {
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.85rem;
+}
+.pager-summary {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  margin-top: 0.85rem;
+}
+.pager .pager-summary { margin-top: 0; }
+.pager-controls { display: flex; align-items: center; gap: 0.5rem; }
+.pager-page {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  min-width: 3.5rem;
+  text-align: center;
+}
+
+.discord-linked { color: var(--safe); font-size: 0.9rem; white-space: nowrap; }
+.discord-unlinked { color: var(--text-secondary); font-size: 0.85rem; white-space: nowrap; }
+
+/* Tables ----------------------------------------------------------------- */
+.table-scroll { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; min-width: 620px; }
+.admin-table th, .admin-table td {
+  text-align: left;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 2px solid rgba(52, 35, 92, 0.5);
+  vertical-align: middle;
+}
+.admin-table th {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.admin-table td { font-size: 0.95rem; }
+.col-actions { white-space: nowrap; display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+.table-link { color: var(--text-primary); font-family: var(--font-display); }
+.table-link:hover { color: var(--gold); }
+.table-muted { color: var(--text-secondary); font-size: 0.85rem; }
+.table-error { color: var(--danger); font-size: 0.8rem; margin-top: 0.25rem; }
+.table-btn {
+  background: var(--bg-slot);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  padding: 0.35rem 0.7rem;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.table-btn:hover:not(:disabled) { border-color: var(--frame-bright); color: var(--text-primary); }
+.table-btn:disabled { opacity: 0.5; cursor: default; }
+.table-btn-danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+.role-pill {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.5rem;
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  color: var(--text-secondary);
+}
+.role-admin { color: var(--gold); border-color: rgba(255, 170, 0, 0.4); background: rgba(255, 170, 0, 0.08); }
+
+/* Admin review feed ------------------------------------------------------ */
+.review-feed { display: flex; flex-direction: column; gap: 0.85rem; }
+.feed-item {
+  background: var(--bg-panel);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  padding: 0.9rem 1.1rem;
+}
+.feed-head { display: flex; align-items: baseline; gap: 0.7rem; margin-bottom: 0.4rem; flex-wrap: wrap; }
+.feed-body {
+  color: var(--text-lore);
+  font-size: 0.92rem;
+  margin-bottom: 0.6rem;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.feed-foot { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+
+/* Settings & Discord linking ---------------------------------------------- */
+.field-hint { color: var(--text-secondary); font-size: 0.82rem; margin-top: 0.45rem; }
+.linked-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.linked-label { color: var(--text-secondary); font-size: 0.85rem; }
+.linked-name { font-family: var(--font-display); font-size: 1.3rem; color: var(--gold); }
+
+/* Native <dialog> so the popup gets focus trapping and Esc for free.
+   `margin: auto` is restored explicitly: the global `* { margin: 0 }` reset
+   overrides the UA style that centres a modal dialog, pinning it top-left. */
+.modal {
+  margin: auto;
+  /* A dialog can be declared inside a nowrap context (the actions cell of the
+     admin table), and white-space inherits — so it is reset here rather than
+     letting the trigger's surroundings dictate how the dialog's text wraps. */
+  white-space: normal;
+  background: var(--bg-panel);
+  border: 2px solid var(--frame-bright);
+  border-radius: 2px;
+  box-shadow: var(--shadow-block-lg);
+  color: var(--text-primary);
+  padding: 0;
+  max-width: 420px;
+  width: calc(100% - 2rem);
+}
+.modal::backdrop { background: rgba(0, 0, 0, 0.65); }
+/* The edit form has far more fields than a code prompt, so it gets more room
+   and scrolls internally rather than pushing the dialog off-screen. */
+.modal-wide { max-width: 560px; }
+/* Setting overflow-y also promotes overflow-x from `visible` to `auto`, so it
+   is pinned to hidden — otherwise a long line adds a stray horizontal bar. */
+.modal-wide .modal-body { max-height: 85vh; overflow-y: auto; overflow-x: hidden; }
+.modal-body p, .modal-body label { overflow-wrap: break-word; }
+.modal-body { padding: 1.75rem; }
+.modal-title { font-size: 1.5rem; margin-bottom: 0.5rem; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5); }
+.modal-sub { color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 1.25rem; }
+.modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+.code-input {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  letter-spacing: 0.35em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* Emoji ------------------------------------------------------------------- */
+/* Sits on the text baseline at roughly cap height so a line of text with emoji
+   in it does not jump around. */
+.custom-emoji {
+  display: inline-block;
+  width: 1.4em;
+  height: 1.4em;
+  vertical-align: -0.3em;
+  object-fit: contain;
+}
+
+.label-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+
+.emoji-picker-root { position: relative; }
+.emoji-trigger {
+  background: var(--bg-slot);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0.3rem 0.5rem;
+}
+.emoji-trigger:hover { border-color: var(--frame-bright); }
+
+.emoji-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 50;
+  width: min(340px, 80vw);
+  background: var(--bg-panel);
+  border: 2px solid var(--frame-bright);
+  border-radius: 2px;
+  box-shadow: var(--shadow-block-lg);
+  padding: 0.75rem;
+}
+.emoji-search { margin-bottom: 0.6rem; padding: 0.45rem 0.6rem; font-size: 0.9rem; }
+.emoji-scroll { max-height: 260px; overflow-y: auto; }
+.emoji-group {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin: 0.5rem 0 0.35rem;
+}
+.emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(2rem, 1fr)); gap: 0.15rem; }
+.emoji-cell {
+  background: none;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.emoji-cell:hover { background: rgba(107, 70, 184, 0.28); }
+.emoji-cell img { width: 1.4rem; height: 1.4rem; object-fit: contain; }
+.emoji-cell-unicode { font-size: 1.25rem; }
+.emoji-empty { color: var(--text-secondary); font-size: 0.85rem; padding: 0.5rem 0; }
+.emoji-foot {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  margin-top: 0.6rem;
+  padding-top: 0.5rem;
+  border-top: 2px solid rgba(52, 35, 92, 0.5);
+}
+
+.char-count {
+  text-align: right;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  margin-top: 0.35rem;
+}
+.char-count-over { color: var(--danger); }
+
+/* Modpacks ---------------------------------------------------------------- */
+.modpack-page { padding-top: 8rem; padding-bottom: 5rem; }
+
+.pack-hero { text-align: center; margin-bottom: 3rem; animation: fadeIn 0.6s ease-out; }
+.pack-title {
+  font-size: clamp(3rem, 9vw, 5.5rem);
+  font-weight: 700;
+  line-height: 1;
+  margin: 0.5rem 0 1.25rem;
+  text-shadow: 5px 5px 0 rgba(0, 0, 0, 0.55);
+}
+.pack-subtitle {
+  color: var(--text-secondary);
+  font-size: 1.15rem;
+  max-width: 46rem;
+  margin: 0 auto 1.75rem;
+  line-height: 1.7;
+}
+.pack-meta { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; }
+.pack-chip {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  padding: 0.3rem 0.7rem;
+  background: var(--bg-slot);
+}
+
+/* Two equal download cards; the whole card is the link, so the "button" inside
+   is a span — a nested <a> would be invalid and unclickable. */
+.download-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+  max-width: 52rem;
+  margin: 0 auto;
+}
+.download-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--bg-slot);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-block);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.15s ease;
+}
+.download-card:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: var(--shadow-block-lg);
+  border-color: var(--gold);
+}
+.download-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; }
+.download-label { font-size: 1.25rem; color: var(--gold); }
+.download-size { color: var(--text-secondary); font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+.download-blurb { color: var(--text-lore); font-size: 0.95rem; flex: 1; }
+.download-file {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.download-btn { width: 100%; margin-top: 0.4rem; }
+
+.pack-note {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  margin-top: 1.25rem;
+}
+
+/* Mod list ---------------------------------------------------------------- */
+.mod-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; }
+.mod-group {
+  --group: var(--gold);
+  background: var(--bg-panel);
+  border: 2px solid color-mix(in srgb, var(--group) 35%, var(--frame));
+  border-radius: 2px;
+  padding: 1.35rem 1.5rem 1.5rem;
+  box-shadow: var(--shadow-block);
+}
+.mod-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+.mod-group-title { font-size: 1.3rem; color: var(--group); text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6); }
+.mod-group-count {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  padding: 0.1rem 0.45rem;
+}
+.mod-group-blurb { color: var(--text-secondary); font-size: 0.88rem; margin: 0.5rem 0 1rem; }
+
+.mod-list { list-style: none; display: flex; flex-direction: column; }
+.mod-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-top: 2px solid rgba(52, 35, 92, 0.45);
+}
+.mod-row:first-child { border-top: none; }
+.mod-name { font-family: var(--font-display); color: var(--text-primary); }
+.mod-name-link:hover { color: var(--group); text-decoration: underline; }
+/* Version pushed right so the column of numbers stays scannable. */
+.mod-version {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mod-flag {
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--danger);
+  border: 2px solid rgba(255, 85, 85, 0.4);
+  background: rgba(255, 85, 85, 0.08);
+  border-radius: 2px;
+  padding: 0.05rem 0.35rem;
+  white-space: nowrap;
+}
+
+.install-card { max-width: none; }
+.install-steps { padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; color: var(--text-lore); }
+.install-steps code {
+  font-family: var(--font-display);
+  background: var(--bg-slot);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  padding: 0 0.3rem;
+  font-size: 0.9em;
+}
+.install-warning {
+  margin-top: 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 2px solid rgba(255, 85, 85, 0.4);
+  background: rgba(255, 85, 85, 0.07);
+  border-radius: 2px;
+  color: var(--text-lore);
+  font-size: 0.92rem;
+}
+
+@media (max-width: 640px) {
+  .mod-groups { grid-template-columns: 1fr; }
+}
+
+/* Link-Discord reminder ---------------------------------------------------
+   Sits directly under the fixed navbar; `main` already clears 68px, so the
+   banner is placed inside that offset rather than pushing the page down. */
+.link-banner {
+  position: fixed;
+  top: 68px;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.6rem 3rem 0.6rem 1rem;
+  background: rgba(255, 170, 0, 0.12);
+  border-bottom: 2px solid rgba(255, 170, 0, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.link-banner-text { color: var(--gold-bright); font-size: 0.95rem; text-align: center; }
+.link-banner-link { color: var(--gold); text-decoration: underline; font-weight: 600; }
+.link-banner-link:hover { color: var(--text-primary); }
+.link-banner-close {
+  position: absolute;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: var(--gold-bright);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0.25rem 0.4rem;
+}
+.link-banner-close:hover { color: var(--danger); }
+
+@media (max-width: 640px) {
+  .link-banner { font-size: 0.85rem; padding-right: 2.5rem; }
+  .link-banner-text { font-size: 0.85rem; }
+}
+
+/* Impressum --------------------------------------------------------------- */
+.impressum .impressum-section { margin-top: 2.5rem; }
+.impressum .form-card { max-width: none; }
+.impressum .form-card p + p { margin-top: 0.85rem; }
+.impressum-address { font-family: var(--font-display); line-height: 1.8; color: var(--text-primary); }
+/* Asides are visually quieter than the legal text they follow — the joke should
+   never be mistaken for the disclosure. */
+.impressum-note {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  border-left: 2px solid var(--frame-bright);
+  padding-left: 0.85rem;
+}
+.impressum-foot { margin-top: 3rem; color: var(--text-secondary); text-align: center; }
+.footer-link { color: var(--text-secondary); text-decoration: underline; }
+.footer-link:hover { color: var(--gold); }
+
+/* Danger zone ------------------------------------------------------------- */
+.danger-title { color: var(--danger); }
+.danger-card { border-color: rgba(255, 85, 85, 0.4); }
+.danger-copy { color: var(--text-secondary); margin-bottom: 1.25rem; }
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: rgba(255, 85, 85, 0.5);
+}
+.btn-danger:hover:not(:disabled) { background: rgba(255, 85, 85, 0.12); border-color: var(--danger); }
+.btn-danger:disabled { opacity: 0.45; cursor: default; }
+
+@media (max-width: 900px) {
+  .admin-split { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .bar-row { grid-template-columns: 6.5rem 1fr 2rem; gap: 0.5rem; }
+  .stat-value { font-size: 2rem; }
 }

@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
+import Link from 'next/link';
 import {
   CATEGORIES,
   categoryLabel,
   categoryColor,
-  categoryRarity,
   linkLabel,
 } from '@/lib/categories';
+import { stars, ratingColor, type RatingSummary } from '@/lib/reviews';
+import { pricingBadge, pricingColor } from '@/lib/pricing';
 
 type Listing = {
   id: string;
@@ -19,6 +21,9 @@ type Listing = {
   url: string;
   secondaryUrl: string | null;
   isTrusted: boolean;
+  pricing: string | null;
+  price: string | null;
+  rating: RatingSummary;
 };
 
 export default function ListingsBrowser({ listings }: { listings: Listing[] }) {
@@ -104,7 +109,9 @@ function ListingCard({ listing }: { listing: Listing }) {
     <div className="tooltip-card" style={{ '--rarity': rarity } as CSSProperties}>
       <div className="tooltip-head">
         <div>
-          <div className="tooltip-name">{listing.name}</div>
+          <Link href={`/listings/${listing.id}`} className="tooltip-name tooltip-name-link">
+            {listing.name}
+          </Link>
           {listing.developer && <div className="tooltip-dev">by {listing.developer}</div>}
         </div>
         <span className={`trust ${listing.isTrusted ? 'trust-yes' : 'trust-no'}`}>
@@ -114,16 +121,46 @@ function ListingCard({ listing }: { listing: Listing }) {
 
       <div className="tooltip-lore">{listing.description}</div>
 
-      <div className="tooltip-rarity">
-        {categoryRarity(listing.category)} · {categoryLabel(listing.category)}
+      <div className="tooltip-category">
+        {categoryLabel(listing.category)}
+        {/* Short form on cards: "Paid · 5€/mo" has to sit on one line next to the
+            rarity, where the full "Free + paid tiers" would wrap. */}
+        {pricingBadge(listing.pricing, listing.price, 'short') && (
+          <span
+            className="price-tag"
+            style={{ '--price': pricingColor(listing.pricing) } as CSSProperties}
+          >
+            {pricingBadge(listing.pricing, listing.price, 'short')}
+          </span>
+        )}
       </div>
 
+      <Link href={`/listings/${listing.id}`} className="rating-line rating-line-link">
+        <span className="rating-stars" style={{ color: ratingColor(listing.rating.average) }}>
+          {stars(listing.rating.average)}
+        </span>
+        <span className="rating-meta">
+          {listing.rating.count === 0
+            ? 'No reviews — add one'
+            : `${listing.rating.average?.toFixed(1)} · ${listing.rating.count} ${
+                listing.rating.count === 1 ? 'review' : 'reviews'
+              }`}
+        </span>
+      </Link>
+
+      {/* Through /go/<id> so the click is counted; the label still comes from
+          the real URL, so hovering and reading the button is unchanged. */}
       <div className="tooltip-links">
-        <a href={listing.url} target="_blank" rel="noreferrer" className="btn btn-primary">
+        <a href={`/go/${listing.id}`} target="_blank" rel="noreferrer" className="btn btn-primary">
           {linkLabel(listing.url)}
         </a>
         {listing.secondaryUrl && (
-          <a href={listing.secondaryUrl} target="_blank" rel="noreferrer" className="btn btn-secondary">
+          <a
+            href={`/go/${listing.id}?to=secondary`}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-secondary"
+          >
             {linkLabel(listing.secondaryUrl)}
           </a>
         )}

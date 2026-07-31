@@ -1,12 +1,25 @@
+import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
+import { summarise } from '@/lib/reviews';
+import { recordPageHitFor, PAGE_KEYS } from '@/lib/stats';
 import ListingsBrowser from './ListingsBrowser';
 
 export const revalidate = 0;
 
 export default async function ListingsPage() {
+  await recordPageHitFor(PAGE_KEYS.listings, (await headers()).get('user-agent'));
+
   const listings = await prisma.listing.findMany({
     orderBy: { createdAt: 'desc' },
+    // Only the ratings are needed for the grid; review bodies are loaded on the
+    // detail page.
+    include: { reviews: { select: { rating: true } } },
   });
+
+  const withRatings = listings.map(({ reviews, ...listing }) => ({
+    ...listing,
+    rating: summarise(reviews.map((r) => r.rating)),
+  }));
 
   return (
     <div className="container" style={{ paddingTop: '8rem', paddingBottom: '4rem' }}>
@@ -19,7 +32,7 @@ export default async function ListingsPage() {
         </p>
       </div>
 
-      <ListingsBrowser listings={listings} />
+      <ListingsBrowser listings={withRatings} />
     </div>
   );
 }

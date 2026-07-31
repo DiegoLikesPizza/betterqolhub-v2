@@ -1,6 +1,10 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
+import { recordPageHitFor, PAGE_KEYS } from '@/lib/stats';
 
-export default function Home() {
+export default async function Home() {
+  await recordPageHitFor(PAGE_KEYS.home, (await headers()).get('user-agent'));
+
   return (
     <div className="container">
       <section className="hero">
@@ -64,7 +68,7 @@ export default function Home() {
             </div>
             <h3 className="bento-title">Thorough Vetting Process</h3>
             <p className="bento-desc">
-              We test each mod extensively, check for compatibility issues, and verify the developer's reputation. You only get the best tools.
+              We test each mod extensively, check for compatibility issues, and verify the developer&apos;s reputation. You only get the best tools.
             </p>
           </div>
         </div>
