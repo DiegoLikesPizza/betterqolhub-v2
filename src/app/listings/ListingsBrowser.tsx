@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   CATEGORIES,
   categoryLabel,
@@ -10,7 +11,20 @@ import {
   linkLabel,
 } from '@/lib/categories';
 import { stars, ratingColor, type RatingSummary } from '@/lib/reviews';
-import { pricingBadge, pricingColor } from '@/lib/pricing';
+import { PRICING, pricingBadge, pricingColor } from '@/lib/pricing';
+import {
+  ANY,
+  SORTS,
+  MAX_QUERY_LENGTH,
+  parseFilters,
+  serialiseFilters,
+  filterListings,
+  countByCategory,
+  sortListings,
+  hasActiveFilters,
+  NO_FILTERS,
+  type ListingFilters,
+} from '@/lib/listing-filters';
 
 type Listing = {
   id: string;
@@ -23,18 +37,61 @@ type Listing = {
   isTrusted: boolean;
   pricing: string | null;
   price: string | null;
+  createdAt: string;
   rating: RatingSummary;
 };
 
+/**
+ * How long a pause in typing counts as "done", for the purpose of writing the
+ * search term into the URL. Short enough that copying the link straight after
+ * typing still captures the search.
+ */
+const QUERY_WRITE_DELAY = 250;
+
 export default function ListingsBrowser({ listings }: { listings: Listing[] }) {
-  const [active, setActive] = useState<string>('ALL');
+  const searchParams = useSearchParams();
+  const urlFilters = parseFilters(searchParams);
+  const urlKey = searchParams.toString();
 
-  // Only show tabs for categories that actually have listings.
-  const availableCategories = CATEGORIES.filter((c) =>
-    listings.some((l) => l.category === c.key)
-  );
+  // The search box is the one control that does not read its value straight
+  // from the URL: a controlled input waiting on a router-synced write per
+  // keystroke is where cursor jumps come from. It filters from local state
+  // immediately and the URL catches up on the pause below.
+  const [queryDraft, setQueryDraft] = useState(urlFilters.query);
+  const filters: ListingFilters = { ...urlFilters, query: queryDraft };
 
-  const visible = active === 'ALL' ? listings : listings.filter((l) => l.category === active);
+  /**
+   * Filter changes go through the History API rather than the router. The
+   * client already holds every listing, so filtering is local — a router
+   * navigation would re-run the page on the server, re-querying the database
+   * and recording a second page hit, for a result the browser can compute.
+   * Next syncs these calls into useSearchParams, so the URL stays the state.
+   */
+  function write(next: ListingFilters) {
+    const qs = serialiseFilters(next);
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+  }
+
+  function setFilter(patch: Partial<ListingFilters>) {
+    write({ ...filters, ...patch });
+  }
+
+  useEffect(() => {
+    if (queryDraft === urlFilters.query) return;
+    const timer = setTimeout(
+      () => write({ ...urlFilters, query: queryDraft }),
+      QUERY_WRITE_DELAY
+    );
+    return () => clearTimeout(timer);
+    // urlKey re-arms the timer whenever another control writes the URL, so a
+    // pending search write cannot land on top of a category picked meanwhile.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryDraft, urlFilters.query, urlKey]);
+
+  function clearFilters() {
+    setQueryDraft('');
+    write(NO_FILTERS);
+  }
 
   if (listings.length === 0) {
     return (
@@ -44,60 +101,142 @@ export default function ListingsBrowser({ listings }: { listings: Listing[] }) {
     );
   }
 
-  // "All" groups by category; a specific tab shows one flat grid.
+  const counts = countByCategory(listings, filters);
+  const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+
+  // Tabs come from the whole catalogue, not from the filtered set. A tab that
+  // disappears because of an unrelated filter takes away the control you would
+  // use to get back, so empty ones stay put and show a zero instead.
+  const tabs = CATEGORIES.filter((c) => listings.some((l) => l.category === c.key));
+
+  const visible = sortListings(filterListings(listings, filters), filters.sort);
+
+  // "All" groups by category so the catalogue still reads as a structured shelf;
+  // a chosen category is one flat grid, where a heading would only repeat the tab.
   const groups =
-    active === 'ALL'
-      ? availableCategories.map((c) => ({
-          key: c.key,
-          label: c.label,
-          items: listings.filter((l) => l.category === c.key),
-        }))
-      : [{ key: active, label: categoryLabel(active), items: visible }];
+    filters.category === ANY
+      ? tabs
+          .map((c) => ({
+            key: c.key,
+            label: c.label,
+            items: visible.filter((l) => l.category === c.key),
+          }))
+          .filter((g) => g.items.length > 0)
+      : [{ key: filters.category, label: categoryLabel(filters.category), items: visible }];
 
   return (
     <div>
       <div className="filter-tabs">
         <button
-          className={`filter-tab ${active === 'ALL' ? 'filter-tab-active' : ''}`}
+          type="button"
+          className={`filter-tab ${filters.category === ANY ? 'filter-tab-active' : ''}`}
           style={{ '--rarity': 'var(--gold)' } as CSSProperties}
-          onClick={() => setActive('ALL')}
+          aria-pressed={filters.category === ANY}
+          onClick={() => setFilter({ category: ANY })}
         >
-          All
+          All <span className="filter-tab-count">{total}</span>
         </button>
-        {availableCategories.map((c) => (
-          <button
-            key={c.key}
-            className={`filter-tab ${active === c.key ? 'filter-tab-active' : ''}`}
-            style={{ '--rarity': c.color } as CSSProperties}
-            onClick={() => setActive(c.key)}
-          >
-            {c.label}
-          </button>
-        ))}
+        {tabs.map((c) => {
+          const count = counts[c.key] ?? 0;
+          return (
+            <button
+              key={c.key}
+              type="button"
+              className={`filter-tab ${filters.category === c.key ? 'filter-tab-active' : ''} ${
+                count === 0 ? 'filter-tab-empty' : ''
+              }`}
+              style={{ '--rarity': c.color } as CSSProperties}
+              aria-pressed={filters.category === c.key}
+              onClick={() => setFilter({ category: c.key })}
+            >
+              {c.label} <span className="filter-tab-count">{count}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {groups.map((group) => (
-        <section key={group.key} style={{ marginBottom: '3.5rem' }}>
-          {active === 'ALL' && (
-            <h2
-              className="pixel"
-              style={{
-                fontSize: '1.5rem',
-                fontWeight: 600,
-                margin: '0 0 1.25rem',
-                color: categoryColor(group.key),
-              }}
-            >
-              {group.label}
-            </h2>
-          )}
-          <div className="mod-grid">
-            {group.items.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))}
-          </div>
-        </section>
-      ))}
+      <div className="table-toolbar">
+        <input
+          type="search"
+          className="form-input toolbar-search"
+          placeholder="Search name, developer, or what it does…"
+          value={queryDraft}
+          maxLength={MAX_QUERY_LENGTH}
+          onChange={(e) => setQueryDraft(e.target.value)}
+          aria-label="Search listings"
+        />
+
+        <select
+          className="form-input toolbar-select"
+          value={filters.pricing}
+          onChange={(e) => setFilter({ pricing: e.target.value })}
+          aria-label="Filter by pricing"
+        >
+          <option value={ANY}>Any pricing</option>
+          {PRICING.map((p) => (
+            <option key={p.key} value={p.key}>{p.label}</option>
+          ))}
+        </select>
+
+        <select
+          className="form-input toolbar-select"
+          value={filters.sort}
+          onChange={(e) => setFilter({ sort: e.target.value as ListingFilters['sort'] })}
+          aria-label="Sort listings"
+        >
+          {SORTS.map((s) => (
+            <option key={s.key} value={s.key}>{s.label}</option>
+          ))}
+        </select>
+
+        <label className="form-checkbox toolbar-check">
+          <input
+            type="checkbox"
+            checked={filters.trusted}
+            onChange={(e) => setFilter({ trusted: e.target.checked })}
+          />
+          Trusted only
+        </label>
+
+        {hasActiveFilters(filters) && (
+          <button type="button" className="table-btn" onClick={clearFilters}>
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      {visible.length === 0 ? (
+        <p style={{ color: 'var(--text-secondary)' }}>
+          Nothing matches those filters.{' '}
+          <button type="button" className="link-button" onClick={clearFilters}>
+            Clear them
+          </button>{' '}
+          to see the whole catalogue.
+        </p>
+      ) : (
+        groups.map((group) => (
+          <section key={group.key} style={{ marginBottom: '3.5rem' }}>
+            {filters.category === ANY && (
+              <h2
+                className="pixel"
+                style={{
+                  fontSize: '1.5rem',
+                  fontWeight: 600,
+                  margin: '0 0 1.25rem',
+                  color: categoryColor(group.key),
+                }}
+              >
+                {group.label}
+              </h2>
+            )}
+            <div className="mod-grid">
+              {group.items.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+          </section>
+        ))
+      )}
     </div>
   );
 }

@@ -384,6 +384,38 @@ a {
   border-color: var(--rarity);
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
 }
+/* Count sits in the body font: at this size the pixel font's digits are hard to
+   tell apart, and the number is the point of the label. */
+.filter-tab-count {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  opacity: 0.65;
+  margin-left: 0.15rem;
+}
+/* A category with nothing in it under the current filters stays clickable —
+   it is how you find out the filter, not the catalogue, is what is empty. */
+.filter-tab-empty { opacity: 0.45; }
+
+/* Sits in the toolbar next to the selects, so it matches their height rather
+   than the taller stacked checkbox used inside forms. */
+.toolbar-check {
+  flex: 0 0 auto;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* A button that has to read as inline prose, for actions offered mid-sentence. */
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--gold);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.link-button:hover { color: var(--text-primary); }
 
 /* Form */
 .form-card {
@@ -932,7 +964,11 @@ a {
   margin-bottom: 1rem;
 }
 .toolbar-search { flex: 1 1 14rem; min-width: 12rem; padding: 0.45rem 0.7rem; font-size: 0.9rem; }
-.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; font-size: 0.9rem; }
+/* `select.form-input` sets width:100%, and matches selects more specifically
+   than a bare class would — so this has to be written as select.toolbar-select
+   to win, or every dropdown claims its own row and the toolbar stops being a
+   row at all. */
+select.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; font-size: 0.9rem; }
 .toolbar-stat {
   margin-left: auto;
   font-family: var(--font-display);
