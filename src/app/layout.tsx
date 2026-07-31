@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import Link from 'next/link';
 import { currentUser } from '@/lib/authz';
 import { prisma } from '@/lib/prisma';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site';
@@ -71,9 +70,6 @@ export default async function RootLayout({
             <p className="pixel-brand">Better QOLHub</p>
             <p>© 2026 Better QOLHub. Built for the Skyblock community.</p>
             <p style={{ opacity: 0.6, marginTop: '0.5rem' }}>An extension of the Discord — vetted, transparent, always improving.</p>
-            <p style={{ marginTop: '0.75rem' }}>
-              <Link href="/impressum" className="footer-link">Impressum</Link>
-            </p>
           </div>
         </footer>
       </body>

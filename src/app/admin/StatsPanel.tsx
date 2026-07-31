@@ -118,6 +118,9 @@ const PAGE_LABELS: Record<string, string> = {
   home: 'Home',
   listings: 'Listings',
   modpacks: 'Modpacks',
+  // The Impressum page is gone and nothing records this key any more, but the
+  // rows it already wrote are still in PageStat. Kept so past traffic reads as
+  // "Impressum" rather than dropping to the raw slug.
   impressum: 'Impressum',
   'download:mrpack': 'Download — .mrpack',
   'download:zip': 'Download — ZIP',

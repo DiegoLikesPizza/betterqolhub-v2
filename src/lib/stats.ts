@@ -135,7 +135,6 @@ export const PAGE_KEYS = {
   home: 'home',
   listings: 'listings',
   modpacks: 'modpacks',
-  impressum: 'impressum',
   downloadMrpack: 'download:mrpack',
   downloadZip: 'download:zip',
 } as const;

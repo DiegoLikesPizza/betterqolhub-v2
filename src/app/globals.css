@@ -1390,23 +1390,6 @@ select.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; fo
   .link-banner-text { font-size: 0.85rem; }
 }
 
-/* Impressum --------------------------------------------------------------- */
-.impressum .impressum-section { margin-top: 2.5rem; }
-.impressum .form-card { max-width: none; }
-.impressum .form-card p + p { margin-top: 0.85rem; }
-.impressum-address { font-family: var(--font-display); line-height: 1.8; color: var(--text-primary); }
-/* Asides are visually quieter than the legal text they follow — the joke should
-   never be mistaken for the disclosure. */
-.impressum-note {
-  color: var(--text-secondary);
-  font-size: 0.92rem;
-  border-left: 2px solid var(--frame-bright);
-  padding-left: 0.85rem;
-}
-.impressum-foot { margin-top: 3rem; color: var(--text-secondary); text-align: center; }
-.footer-link { color: var(--text-secondary); text-decoration: underline; }
-.footer-link:hover { color: var(--gold); }
-
 /* Danger zone ------------------------------------------------------------- */
 .danger-title { color: var(--danger); }
 .danger-card { border-color: rgba(255, 85, 85, 0.4); }
