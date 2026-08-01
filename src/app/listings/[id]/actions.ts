@@ -5,8 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { currentUser } from '@/lib/authz';
 import {
   isValidRating,
+  checkReviewBody,
   MAX_BODY_LENGTH,
-  MIN_BODY_LENGTH,
 } from '@/lib/reviews';
 import { notifyReview } from '@/lib/discord-bot';
 import {
@@ -52,8 +52,11 @@ export async function submitReview(
   if (!isValidRating(rating)) {
     return { ok: false, message: 'Choose a rating between 1 and 5 stars.' };
   }
-  if (body.length < MIN_BODY_LENGTH) {
-    return { ok: false, message: 'Write a sentence or two about your experience.' };
+  // The published rules, enforced here rather than only in the form — a server
+  // action is a POST endpoint anyone can call directly.
+  const problem = checkReviewBody(body);
+  if (problem) {
+    return { ok: false, message: problem };
   }
   // Measured as rendered, so `<:emoji:123…>` counts as one glyph rather than
   // twenty-odd characters of markup.

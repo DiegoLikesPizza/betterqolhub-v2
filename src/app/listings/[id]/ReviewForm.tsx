@@ -2,7 +2,12 @@
 
 import { useActionState, useRef, useState } from 'react';
 import { submitReview, type ReviewFormState } from './actions';
-import { MAX_BODY_LENGTH, MAX_RATING } from '@/lib/reviews';
+import {
+  MAX_BODY_LENGTH,
+  MAX_RATING,
+  REVIEW_RULES,
+  checkReviewBody,
+} from '@/lib/reviews';
 import { displayLength, type CustomEmoji } from '@/lib/emoji';
 import EmojiPicker from './EmojiPicker';
 
@@ -49,6 +54,12 @@ export default function ReviewForm({
 
   const used = displayLength(body);
   const over = used > MAX_BODY_LENGTH;
+
+  // The same check the server runs, so the button state and the eventual answer
+  // agree. Only surfaced once there is something to judge — an untouched form
+  // should not open with a complaint.
+  const problem = checkReviewBody(body);
+  const showProblem = body.trim().length > 0 && problem !== null;
 
   return (
     <form className="form-card" action={action}>
@@ -99,6 +110,11 @@ export default function ReviewForm({
           <label className="form-label" htmlFor="body">Your review</label>
           <EmojiPicker customEmoji={customEmoji} onPick={insert} />
         </div>
+        <ul className="review-rules">
+          {REVIEW_RULES.map((rule) => (
+            <li key={rule}>{rule}</li>
+          ))}
+        </ul>
         <textarea
           ref={textareaRef}
           id="body"
@@ -109,15 +125,18 @@ export default function ReviewForm({
           placeholder="Does it work? Did it get you banned? Is support responsive?"
           required
         />
-        <div className={`char-count ${over ? 'char-count-over' : ''}`}>
-          {used} / {MAX_BODY_LENGTH}
+        <div className="count-row">
+          {showProblem ? <span className="rule-warning">{problem}</span> : <span />}
+          <span className={`char-count ${over ? 'char-count-over' : ''}`}>
+            {used} / {MAX_BODY_LENGTH}
+          </span>
         </div>
       </div>
 
       <button
         type="submit"
         className="btn btn-primary"
-        disabled={pending || rating === 0 || over}
+        disabled={pending || rating === 0 || over || problem !== null}
         style={{ width: '100%' }}
       >
         {pending ? 'Posting…' : existing ? 'Update Review' : 'Post Review'}

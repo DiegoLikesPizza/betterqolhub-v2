@@ -313,8 +313,11 @@ a {
 }
 
 .tooltip-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; }
+/* Card text runs in the body font throughout, matching the description. The
+   pixel display font is legible as a heading but slows down the parts of a card
+   people actually compare — names, categories, and the trust tag. */
 .tooltip-name {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 1.3rem;
   font-weight: 600;
   line-height: 1.1;
@@ -328,7 +331,7 @@ a {
    tooltip's shape and colour; the rarity word that used to sit in front of the
    category is gone. */
 .tooltip-category {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -358,6 +361,14 @@ a {
 }
 .trust-yes { color: var(--safe); border-color: rgba(85, 255, 85, 0.4); background: rgba(85, 255, 85, 0.08); }
 .trust-no { color: var(--gold-bright); border-color: rgba(255, 170, 0, 0.4); background: rgba(255, 170, 0, 0.08); }
+/* Scoped to the listing surfaces on purpose: .trust and .btn are reused across
+   the admin tables and every other page, which keep the display font. Within a
+   card the button is the last piece that would otherwise break the run of body
+   text. */
+.tooltip-card .trust,
+.detail-card .trust,
+.tooltip-card .btn,
+.detail-card .btn { font-family: var(--font-body); }
 
 /* Filter tabs */
 .filter-tabs {
@@ -1197,6 +1208,31 @@ select.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; fo
   margin-top: 0.35rem;
 }
 .char-count-over { color: var(--danger); }
+
+/* Counter on the right, rule warning on the left. The empty <span> keeps the
+   counter pinned right when there is no warning to show. */
+.count-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+.rule-warning {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--gold-bright);
+}
+
+/* Stated before the box rather than after the rejection — the rules are only
+   fair if they are readable while writing. */
+.review-rules {
+  margin: 0 0 0.6rem;
+  padding-left: 1.1rem;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.review-rules li { margin-top: 0.2rem; }
 
 /* Modpacks ---------------------------------------------------------------- */
 .modpack-page { padding-top: 8rem; padding-bottom: 5rem; }

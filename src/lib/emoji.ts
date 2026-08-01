@@ -73,6 +73,14 @@ export function countCustomEmoji(body: string): number {
   return [...body.matchAll(new RegExp(CUSTOM_EMOJI.source, 'g'))].length;
 }
 
+/**
+ * Replaces custom emoji with a space, for checks that should see only what the
+ * reader would read as words.
+ */
+export function stripCustomEmoji(body: string): string {
+  return body.replace(new RegExp(CUSTOM_EMOJI.source, 'g'), ' ');
+}
+
 export const MAX_CUSTOM_EMOJI_PER_REVIEW = 20;
 
 /**
