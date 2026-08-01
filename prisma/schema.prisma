@@ -50,6 +50,12 @@ model User {
   reviews       Review[]
   discordLink   DiscordLink?
   passwordReset PasswordReset?
+
+  /// Listings this user is the verified developer of. Granted by an admin, so
+  /// this is not a role: a user can own one listing and be an ordinary member
+  /// everywhere else.
+  ownedListings Listing[]      @relation("ListingOwner")
+  announcements Announcement[]
 }
 
 /// A pending password reset, delivered as a code over Discord DM. One per user:
@@ -108,10 +114,49 @@ model Listing {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  reviews Review[]
-  stats   ListingStat[]
+  /// The account allowed to post announcements on this listing.
+  ///
+  /// Deliberately a relation rather than a Role: ownership is per listing, so a
+  /// global role would grant it everywhere. Assigned by an admin only — the
+  /// `developer` field above is free text an admin typed and proves nothing, so
+  /// it cannot be used to decide who may publish here.
+  ///
+  /// SetNull rather than Cascade: deleting the developer's account must not
+  /// take the listing down with it.
+  ownerId String?
+  owner   User?   @relation("ListingOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  reviews       Review[]
+  stats         ListingStat[]
+  announcements Announcement[]
 
   @@index([category])
+  @@index([ownerId])
+}
+
+/// A note published by a listing's verified owner — a release, an outage, a
+/// warning about fake copies.
+///
+/// Kept apart from Review on purpose. A review is the community's verdict and
+/// carries a rating; an announcement is the vendor talking about their own
+/// product and must never move the score. Mixing them in one table would make
+/// that separation a matter of remembering to filter.
+model Announcement {
+  id        String   @id @default(cuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  /// Cascade: if the account goes, so do its posts. An unattributed vendor
+  /// announcement on a site that sells independent vetting is worse than none.
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// The listing page reads the newest first and nothing else.
+  @@index([listingId, createdAt])
 }
 
 /// Daily counters per listing.

@@ -183,6 +183,68 @@ export async function setListingTrust(listingId: string, isTrusted: boolean) {
   revalidatePath('/listings');
 }
 
+export type SetOwnerState = {
+  ok?: boolean;
+  message?: string;
+} | undefined;
+
+/**
+ * Assigns the account allowed to post announcements on a listing, or clears it
+ * when the username is blank.
+ *
+ * Kept as its own action rather than a field on the listing form: it needs a
+ * lookup the shared form validator cannot do, and granting it is supposed to be
+ * a deliberate step taken *after* checking the person's identity over Discord.
+ * Nothing here verifies that — only an admin can call this, and the check is
+ * theirs to make.
+ */
+export async function setListingOwner(
+  _prevState: SetOwnerState,
+  formData: FormData
+): Promise<SetOwnerState> {
+  try {
+    await requireAdmin();
+  } catch {
+    return { ok: false, message: 'Admin access required.' };
+  }
+
+  const listingId = String(formData.get('listingId') ?? '').trim();
+  const username = String(formData.get('ownerUsername') ?? '').trim();
+  if (!listingId) return { ok: false, message: 'Missing listing.' };
+
+  if (!username) {
+    await prisma.listing.update({ where: { id: listingId }, data: { ownerId: null } });
+    revalidatePath('/admin', 'layout');
+    revalidatePath(`/listings/${listingId}`);
+    return { ok: true, message: 'Owner cleared.' };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true, discordId: true },
+  });
+  if (!user) {
+    return { ok: false, message: `No member called “${username}”.` };
+  }
+  // The same bar reviews already clear. Announcements are published under this
+  // account's name, so it has to be one that was verified over Discord.
+  if (!user.discordId) {
+    return {
+      ok: false,
+      message: `“${username}” has not linked a Discord account yet.`,
+    };
+  }
+
+  await prisma.listing.update({
+    where: { id: listingId },
+    data: { ownerId: user.id },
+  });
+
+  revalidatePath('/admin', 'layout');
+  revalidatePath(`/listings/${listingId}`);
+  return { ok: true, message: `${username} can now post announcements.` };
+}
+
 export async function setUserRole(userId: string, makeAdmin: boolean) {
   const admin = await requireAdmin();
 

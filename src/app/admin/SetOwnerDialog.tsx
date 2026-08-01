@@ -1,0 +1,98 @@
+'use client';
+
+import { useActionState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { setListingOwner, type SetOwnerState } from './actions';
+
+/**
+ * Grants a member the right to post announcements on one listing.
+ *
+ * Its own dialog rather than a field on the edit form: this is the step where
+ * an admin vouches that the person on the other end really is the developer,
+ * and it should not be something you change by accident while fixing a typo in
+ * a description.
+ */
+export default function SetOwnerDialog({
+  listingId,
+  listingName,
+  ownerUsername,
+}: {
+  listingId: string;
+  listingName: string;
+  ownerUsername: string | null;
+}) {
+  const router = useRouter();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [state, action, pending] = useActionState<SetOwnerState, FormData>(
+    setListingOwner,
+    undefined
+  );
+
+  useEffect(() => {
+    if (state?.ok) {
+      dialogRef.current?.close();
+      router.refresh();
+    }
+  }, [state, router]);
+
+  return (
+    <>
+      <button
+        type="button"
+        className="table-btn"
+        onClick={() => dialogRef.current?.showModal()}
+      >
+        {ownerUsername ? `Owner: ${ownerUsername}` : 'Set owner'}
+      </button>
+
+      <dialog ref={dialogRef} className="modal">
+        <form action={action} className="modal-body">
+          <h3 className="pixel modal-title">Listing owner</h3>
+          <p className="modal-sub">
+            The account that can post announcements on <strong>{listingName}</strong>.
+            Verify over Discord that they really are the developer before granting
+            this — nothing here checks that for you.
+          </p>
+
+          {state?.message && (
+            <div className={`form-alert ${state.ok ? 'form-alert-success' : 'form-alert-error'}`}>
+              {state.message}
+            </div>
+          )}
+
+          <input type="hidden" name="listingId" value={listingId} />
+
+          <div className="form-group">
+            <label className="form-label" htmlFor={`owner-${listingId}`}>Username</label>
+            <input
+              id={`owner-${listingId}`}
+              name="ownerUsername"
+              type="text"
+              className="form-input"
+              defaultValue={ownerUsername ?? ''}
+              placeholder="Leave empty to remove the owner"
+              autoComplete="off"
+            />
+            <p className="form-hint">
+              Must be a member who has linked their Discord, the same bar reviews
+              already clear.
+            </p>
+          </div>
+
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => dialogRef.current?.close()}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={pending}>
+              {pending ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </form>
+      </dialog>
+    </>
+  );
+}

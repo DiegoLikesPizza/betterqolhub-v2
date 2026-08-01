@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { prisma } from '@/lib/prisma';
 import type { Role } from '@prisma/client';
 
 export type SessionUser = {
@@ -42,6 +43,28 @@ export async function requireUser(): Promise<SessionUser> {
   const user = await currentUser();
   if (!user) {
     throw new Error('Unauthorized: sign in required.');
+  }
+  return user;
+}
+
+/**
+ * Throws unless the caller may publish on this listing: its assigned owner, or
+ * an admin.
+ *
+ * Per listing rather than per role, so being the developer of one client grants
+ * nothing anywhere else. The owner is read from the database rather than from
+ * anything the client sent, so a forged form field cannot grant it.
+ */
+export async function requireListingOwner(listingId: string): Promise<SessionUser> {
+  const user = await requireUser();
+  if (user.role === 'ADMIN') return user;
+
+  const listing = await prisma.listing.findUnique({
+    where: { id: listingId },
+    select: { ownerId: true },
+  });
+  if (!listing || listing.ownerId !== user.id) {
+    throw new Error('Forbidden: you are not the developer of that listing.');
   }
   return user;
 }

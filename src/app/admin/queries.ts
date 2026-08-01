@@ -16,6 +16,8 @@ export type DashboardListing = {
   secondaryUrl: string | null;
   pricing: string | null;
   price: string | null;
+  /// Username of the account allowed to post announcements, or null.
+  ownerUsername: string | null;
 };
 
 /**
@@ -159,12 +161,14 @@ export async function getAdminListings(): Promise<DashboardListing[]> {
       secondaryUrl: true,
       pricing: true,
       price: true,
+      owner: { select: { username: true } },
       reviews: { select: { rating: true } },
     },
   });
 
-  return rows.map(({ reviews, ...rest }) => ({
+  return rows.map(({ reviews, owner, ...rest }) => ({
     ...rest,
+    ownerUsername: owner?.username ?? null,
     rating: summarise(reviews.map((r) => r.rating)),
   }));
 }

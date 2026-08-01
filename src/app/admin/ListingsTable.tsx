@@ -13,6 +13,7 @@ import {
   pricingHasPrice,
 } from '@/lib/pricing';
 import EditListingDialog from './EditListingDialog';
+import SetOwnerDialog from './SetOwnerDialog';
 import Pager, { pageSlice, pageCount } from './Pager';
 
 type Row = {
@@ -28,6 +29,7 @@ type Row = {
   secondaryUrl: string | null;
   pricing: string | null;
   price: string | null;
+  ownerUsername: string | null;
 };
 
 /**
@@ -272,6 +274,12 @@ function ListingRow({ listing }: { listing: Row }) {
       </td>
       <td className="col-actions">
         <EditListingDialog listing={listing} />
+
+        <SetOwnerDialog
+          listingId={listing.id}
+          listingName={listing.name}
+          ownerUsername={listing.ownerUsername}
+        />
 
         <button
           type="button"

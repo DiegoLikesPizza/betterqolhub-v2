@@ -15,8 +15,10 @@ import { summarise, stars, ratingColor } from '@/lib/reviews';
 import { fetchGuildEmojis } from '@/lib/discord-bot';
 import { recordListingViewFor } from '@/lib/stats';
 import { pricingBadge, pricingColor } from '@/lib/pricing';
+import { ANNOUNCEMENT_HISTORY_LIMIT } from '@/lib/announcements';
 import ReviewForm from './ReviewForm';
 import ReviewList from './ReviewList';
+import Announcements from './Announcements';
 
 export const revalidate = 0;
 
@@ -90,6 +92,11 @@ export default async function ListingDetailPage({
         orderBy: { createdAt: 'desc' },
         include: { user: { select: { id: true, username: true } } },
       },
+      announcements: {
+        orderBy: { createdAt: 'desc' },
+        take: ANNOUNCEMENT_HISTORY_LIMIT,
+        include: { author: { select: { username: true } } },
+      },
     },
   });
 
@@ -112,6 +119,13 @@ export default async function ListingDetailPage({
       ])
     : [null, []];
   const discordLinked = Boolean(account?.discordId);
+
+  // The composer is offered to the listing's owner and to admins. The server
+  // action re-derives this from the database, so this only decides what is
+  // drawn — it is not what grants the permission.
+  const canPost = Boolean(
+    user && (user.role === 'ADMIN' || (listing.ownerId && listing.ownerId === user.id))
+  );
 
   return (
     <div className="container narrow-page">
@@ -175,6 +189,20 @@ export default async function ListingDetailPage({
           )}
         </div>
       </article>
+
+      {/* Above the reviews but in its own block: the developer's word and the
+          community's verdict are different kinds of claim, and the page should
+          not let them blur into one another. */}
+      <Announcements
+        listingId={listing.id}
+        canPost={canPost}
+        announcements={listing.announcements.map((a) => ({
+          id: a.id,
+          body: a.body,
+          author: a.author.username,
+          createdAt: a.createdAt.toISOString(),
+        }))}
+      />
 
       <section style={{ marginTop: '3rem' }}>
         <h2 className="pixel section-title" style={{ marginBottom: '1.5rem' }}>

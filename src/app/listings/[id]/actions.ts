@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import { currentUser } from '@/lib/authz';
+import { currentUser, requireListingOwner } from '@/lib/authz';
+import { MAX_ANNOUNCEMENT_LENGTH } from '@/lib/announcements';
 import { isValidRating, MAX_BODY_LENGTH } from '@/lib/reviews';
 import { notifyReview } from '@/lib/discord-bot';
 import {
@@ -104,6 +105,75 @@ export async function submitReview(
   revalidatePath(`/listings/${listingId}`);
   revalidatePath('/listings');
   return { ok: true, message: 'Review posted.' };
+}
+
+export type AnnouncementFormState = {
+  ok?: boolean;
+  message?: string;
+} | undefined;
+
+/**
+ * Publishes an announcement on a listing the caller owns.
+ *
+ * Note there is no Discord notification here, unlike reviews: an announcement
+ * is the developer's own message, and mirroring it into the server would put
+ * unvetted vendor claims in front of the community under the hub's name.
+ */
+export async function postAnnouncement(
+  _prevState: AnnouncementFormState,
+  formData: FormData
+): Promise<AnnouncementFormState> {
+  const listingId = String(formData.get('listingId') ?? '').trim();
+  if (!listingId) {
+    return { ok: false, message: 'Missing listing.' };
+  }
+
+  let author;
+  try {
+    author = await requireListingOwner(listingId);
+  } catch {
+    return { ok: false, message: 'Only this listing’s developer can post here.' };
+  }
+
+  const body = String(formData.get('body') ?? '').trim();
+  if (!body) {
+    return { ok: false, message: 'Write something to announce.' };
+  }
+  if (body.length > MAX_ANNOUNCEMENT_LENGTH) {
+    return {
+      ok: false,
+      message: `Announcements are limited to ${MAX_ANNOUNCEMENT_LENGTH} characters.`,
+    };
+  }
+
+  try {
+    await prisma.announcement.create({
+      data: { listingId, authorId: author.id, body },
+    });
+  } catch (error) {
+    console.error('[announcements] failed to save', error);
+    return { ok: false, message: 'Could not post that. Try again.' };
+  }
+
+  revalidatePath(`/listings/${listingId}`);
+  return { ok: true, message: 'Announcement posted.' };
+}
+
+export async function deleteAnnouncement(announcementId: string) {
+  const announcement = await prisma.announcement.findUnique({
+    where: { id: announcementId },
+    select: { listingId: true },
+  });
+  if (!announcement) return;
+
+  // Authorised against the listing the announcement belongs to, not against the
+  // author: an owner may remove a post left by a previous owner, and an admin
+  // may remove any.
+  await requireListingOwner(announcement.listingId);
+
+  await prisma.announcement.delete({ where: { id: announcementId } });
+
+  revalidatePath(`/listings/${announcement.listingId}`);
 }
 
 export async function deleteReview(reviewId: string) {

@@ -1209,6 +1209,76 @@ select.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; fo
 }
 .char-count-over { color: var(--danger); }
 
+/* Developer announcements ------------------------------------------------- */
+/* Deliberately not styled like a review. A review is the community's verdict;
+   this is the vendor talking about their own product, and a reader has to be
+   able to tell which is which at a glance — hence the left rule, the muted
+   panel and the "From the developer" heading rather than a star row. */
+.announce-block { margin-top: 3rem; }
+.announce-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+.announce-title { margin: 0; }
+
+.announce-card {
+  background: var(--bg-panel);
+  border: 2px solid var(--frame);
+  border-left: 4px solid var(--gold);
+  border-radius: 2px;
+  padding: 1rem 1.15rem;
+}
+.announce-card + .announce-card { margin-top: 0.85rem; }
+
+.announce-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+.announce-author { color: var(--gold); font-weight: 600; }
+
+/* pre-wrap so a changelog's own line breaks survive — the body is plain text,
+   never parsed as markup. */
+.announce-body {
+  margin: 0;
+  color: var(--text-lore);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+.announce-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+
+.announce-more {
+  display: block;
+  width: 100%;
+  margin-top: 0.85rem;
+  padding: 0.5rem;
+  background: none;
+  border: 2px dashed var(--frame);
+  border-radius: 2px;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.announce-more:hover { border-color: var(--gold); color: var(--gold); }
+
+.announce-empty { color: var(--text-secondary); font-size: 0.9rem; }
+
+/* The dialog can hold a lot of them, so it scrolls rather than growing past
+   the viewport. */
+.announce-history { max-height: 60vh; overflow-y: auto; margin-bottom: 1.25rem; }
+
 /* Stated above the box rather than after a rejection — nothing here is enforced
    in code, so the only place it can do any work is while someone is writing. */
 .review-rule {
