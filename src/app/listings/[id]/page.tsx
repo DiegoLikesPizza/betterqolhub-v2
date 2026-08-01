@@ -19,6 +19,7 @@ import { ANNOUNCEMENT_HISTORY_LIMIT } from '@/lib/announcements';
 import ReviewForm from './ReviewForm';
 import ReviewList from './ReviewList';
 import Announcements from './Announcements';
+import FollowButton from './FollowButton';
 
 export const revalidate = 0;
 
@@ -97,6 +98,7 @@ export default async function ListingDetailPage({
         take: ANNOUNCEMENT_HISTORY_LIMIT,
         include: { author: { select: { username: true } } },
       },
+      _count: { select: { followers: true } },
     },
   });
 
@@ -112,12 +114,16 @@ export default async function ListingDetailPage({
 
   // Only fetch the things the review form needs when there is someone to show
   // it to, so signed-out visitors never trigger a call to the bot.
-  const [account, customEmoji] = user
+  const [account, customEmoji, follow] = user
     ? await Promise.all([
         prisma.user.findUnique({ where: { id: user.id }, select: { discordId: true } }),
         fetchGuildEmojis(),
+        prisma.follow.findUnique({
+          where: { userId_listingId: { userId: user.id, listingId: listing.id } },
+          select: { userId: true },
+        }),
       ])
-    : [null, []];
+    : [null, [], null];
   const discordLinked = Boolean(account?.discordId);
 
   // The composer is offered to the listing's owner and to admins. The server
@@ -169,6 +175,13 @@ export default async function ListingDetailPage({
             <span className="rating-meta">No reviews yet</span>
           )}
         </div>
+
+        <FollowButton
+          listingId={listing.id}
+          signedIn={Boolean(user)}
+          following={Boolean(follow)}
+          followers={listing._count.followers}
+        />
 
         {/* Both buttons go through /go/<id>, which counts the click and then
             redirects to the real destination. The label still comes from the

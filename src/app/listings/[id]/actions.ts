@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import { currentUser, requireListingOwner } from '@/lib/authz';
+import { currentUser, requireUser, requireListingOwner } from '@/lib/authz';
 import { MAX_ANNOUNCEMENT_LENGTH } from '@/lib/announcements';
 import { isValidRating, MAX_BODY_LENGTH } from '@/lib/reviews';
 import { notifyReview } from '@/lib/discord-bot';
@@ -105,6 +105,34 @@ export async function submitReview(
   revalidatePath(`/listings/${listingId}`);
   revalidatePath('/listings');
   return { ok: true, message: 'Review posted.' };
+}
+
+/**
+ * Follows or unfollows a listing, returning the state the button should show.
+ *
+ * The delete/create pair is driven by what the caller says it wants rather than
+ * by reading first and toggling, so two rapid clicks cannot race into the wrong
+ * final state. The composite primary key makes both ends idempotent.
+ */
+export async function setFollowing(listingId: string, following: boolean): Promise<boolean> {
+  const user = await requireUser();
+
+  if (following) {
+    await prisma.follow.upsert({
+      where: { userId_listingId: { userId: user.id, listingId } },
+      create: { userId: user.id, listingId },
+      update: {},
+    });
+  } else {
+    // deleteMany rather than delete: unfollowing something already unfollowed
+    // should be a no-op, not a "record not found" throw.
+    await prisma.follow.deleteMany({
+      where: { userId: user.id, listingId },
+    });
+  }
+
+  revalidatePath(`/listings/${listingId}`);
+  return following;
 }
 
 export type AnnouncementFormState = {

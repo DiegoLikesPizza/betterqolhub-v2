@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { Role } from '@prisma/client';
+import NotificationCentre from './NotificationCentre';
+import type { NotificationFeed } from '@/lib/notifications';
 
 type NavUser = { name?: string | null; role: Role } | null;
 
@@ -13,9 +15,13 @@ type NavUser = { name?: string | null; role: Role } | null;
 export default function NavBar({
   user,
   logout,
+  notifications,
+  markNotificationsRead,
 }: {
   user: NavUser;
   logout: () => Promise<void>;
+  notifications: NotificationFeed;
+  markNotificationsRead: () => Promise<void>;
 }) {
   const pathname = usePathname();
 
@@ -62,6 +68,9 @@ export default function NavBar({
 
   const accountLinks = user ? (
     <>
+      <li className="navbar-notif">
+        <NotificationCentre feed={notifications} markRead={markNotificationsRead} />
+      </li>
       <li>
         <Link
           href="/settings"

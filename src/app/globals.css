@@ -1209,6 +1209,127 @@ select.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; fo
 }
 .char-count-over { color: var(--danger); }
 
+/* Follow button ----------------------------------------------------------- */
+.follow-wrap { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.follow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  background: var(--bg-slot);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.follow-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.follow-btn:disabled { opacity: 0.6; cursor: default; }
+/* Following is a state, not an action, so it reads as filled-in rather than as
+   a second button competing with the primary link below it. */
+.follow-btn-on { color: var(--safe); border-color: rgba(85, 255, 85, 0.45); }
+.follow-count {
+  font-size: 0.78rem;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+.follow-error { font-size: 0.8rem; color: var(--danger); }
+
+/* Notification centre ----------------------------------------------------- */
+.navbar-notif { display: flex; align-items: center; }
+.notif { position: relative; display: flex; align-items: center; }
+.notif-bell {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 0.2rem 0.35rem;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.notif-bell:hover { transform: translateY(-1px); }
+/* The desaturation sits on the glyph, not the button: a filter applies to the
+   whole subtree, and on the button it drained the colour out of the badge. */
+.notif-icon {
+  display: inline-block;
+  filter: grayscale(1) brightness(1.6);
+  transition: filter 0.15s ease;
+}
+.notif-bell:hover .notif-icon { filter: none; }
+/* Sits on the bell rather than beside it, so the bar's width does not shift
+   when the count appears or clears. */
+.notif-badge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.3rem;
+  min-width: 1.05rem;
+  padding: 0 0.2rem;
+  background: var(--danger);
+  border-radius: 999px;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.05rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  width: min(22rem, calc(100vw - 2rem));
+  background: var(--bg-panel);
+  border: 2px solid var(--frame-bright);
+  border-radius: 2px;
+  box-shadow: var(--shadow-block-lg);
+  z-index: 60;
+}
+.notif-head {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 2px solid var(--frame);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+.notif-empty { padding: 1rem 0.9rem; margin: 0; font-size: 0.85rem; color: var(--text-secondary); }
+.notif-list { list-style: none; margin: 0; padding: 0; max-height: 60vh; overflow-y: auto; }
+.notif-item { border-bottom: 1px solid rgba(52, 35, 92, 0.5); }
+.notif-item:last-child { border-bottom: none; }
+.notif-item a {
+  display: block;
+  padding: 0.7rem 0.9rem;
+  text-decoration: none;
+  transition: background 0.12s ease;
+}
+.notif-item a:hover { background: var(--bg-slot); }
+/* The unread marker is a left bar, not a colour change on the text — the body
+   still has to be readable once it has been seen. */
+.notif-item-unread a { border-left: 3px solid var(--gold); padding-left: calc(0.9rem - 3px); }
+.notif-listing {
+  display: block;
+  color: var(--gold);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+/* Two lines then ellipsis: enough to tell whether it is worth opening. */
+.notif-body {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--text-lore);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.notif-time { display: block; margin-top: 0.25rem; font-size: 0.72rem; color: var(--text-secondary); }
+
 /* Developer announcements ------------------------------------------------- */
 /* Deliberately not styled like a review. A review is the community's verdict;
    this is the vendor talking about their own product, and a reader has to be

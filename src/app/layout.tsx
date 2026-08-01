@@ -3,7 +3,8 @@ import './globals.css';
 import { currentUser } from '@/lib/authz';
 import { prisma } from '@/lib/prisma';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site';
-import { logout } from './(account)/actions';
+import { getNotifications, EMPTY_FEED } from '@/lib/notifications';
+import { logout, markNotificationsRead } from './(account)/actions';
 import NavBar from './NavBar';
 import LinkDiscordBanner from './LinkDiscordBanner';
 
@@ -45,20 +46,29 @@ export default async function RootLayout({
 }) {
   const user = await currentUser();
 
-  // Only asked when there is a session, so signed-out visitors cost no query.
-  const discordLinked = user
-    ? Boolean(
-        (await prisma.user.findUnique({
+  // Both only asked when there is a session, so signed-out visitors still cost
+  // no query. Run together rather than in sequence — neither needs the other.
+  const [account, notifications] = user
+    ? await Promise.all([
+        prisma.user.findUnique({
           where: { id: user.id },
           select: { discordId: true },
-        }))?.discordId
-      )
-    : true;
+        }),
+        getNotifications(user.id),
+      ])
+    : [null, EMPTY_FEED];
+
+  const discordLinked = user ? Boolean(account?.discordId) : true;
 
   return (
     <html lang="en">
       <body>
-        <NavBar user={user ? { name: user.name, role: user.role } : null} logout={logout} />
+        <NavBar
+          user={user ? { name: user.name, role: user.role } : null}
+          logout={logout}
+          notifications={notifications}
+          markNotificationsRead={markNotificationsRead}
+        />
         {user && !discordLinked && <LinkDiscordBanner />}
 
         <main className="main-content">

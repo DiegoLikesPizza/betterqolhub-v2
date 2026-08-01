@@ -47,6 +47,14 @@ model User {
   /// apply to a first change.
   usernameChangedAt DateTime?
 
+  /// When this user last opened the notification centre.
+  ///
+  /// The whole of "read state" is this one column. Notifications are derived at
+  /// read time from follows plus announcements rather than written out per
+  /// follower, so there is nothing to mark read individually — and nothing that
+  /// can be left pointing at an announcement that was since deleted.
+  notificationsReadAt DateTime?
+
   reviews       Review[]
   discordLink   DiscordLink?
   passwordReset PasswordReset?
@@ -56,6 +64,26 @@ model User {
   /// everywhere else.
   ownedListings Listing[]      @relation("ListingOwner")
   announcements Announcement[]
+  follows       Follow[]
+}
+
+/// A user following a listing, so its announcements reach them.
+///
+/// The composite primary key is the whole point: following twice is the same
+/// fact as following once, and the database says so rather than the server
+/// action having to check first.
+model Follow {
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+  /// Announcements are read per follower, but a listing's follower count is
+  /// read per listing.
+  @@index([listingId])
 }
 
 /// A pending password reset, delivered as a code over Discord DM. One per user:
@@ -129,6 +157,7 @@ model Listing {
   reviews       Review[]
   stats         ListingStat[]
   announcements Announcement[]
+  followers     Follow[]
 
   @@index([category])
   @@index([ownerId])

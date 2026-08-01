@@ -2,8 +2,10 @@
 
 import bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
+import { revalidatePath } from 'next/cache';
 import { signOut } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { requireUser } from '@/lib/authz';
 import { MIN_PASSWORD_LENGTH, USERNAME_PATTERN } from '@/lib/account';
 
 export type AuthFormState = {
@@ -54,4 +56,24 @@ export async function register(
 
 export async function logout() {
   await signOut({ redirectTo: '/' });
+}
+
+/**
+ * Marks the notification centre as read up to now.
+ *
+ * Read state is a single timestamp rather than a flag per notification, because
+ * notifications are derived rather than stored — see src/lib/notifications.ts.
+ * Opening the panel is the only thing that moves it.
+ */
+export async function markNotificationsRead() {
+  const user = await requireUser();
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { notificationsReadAt: new Date() },
+  });
+
+  // The badge lives in the root layout, so the whole tree needs re-rendering
+  // for it to clear.
+  revalidatePath('/', 'layout');
 }
