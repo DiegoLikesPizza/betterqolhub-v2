@@ -1209,30 +1209,14 @@ select.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; fo
 }
 .char-count-over { color: var(--danger); }
 
-/* Counter on the right, rule warning on the left. The empty <span> keeps the
-   counter pinned right when there is no warning to show. */
-.count-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 1rem;
-}
-.rule-warning {
-  margin-top: 0.35rem;
-  font-size: 0.78rem;
-  color: var(--gold-bright);
-}
-
-/* Stated before the box rather than after the rejection — the rules are only
-   fair if they are readable while writing. */
-.review-rules {
+/* Stated above the box rather than after a rejection — nothing here is enforced
+   in code, so the only place it can do any work is while someone is writing. */
+.review-rule {
   margin: 0 0 0.6rem;
-  padding-left: 1.1rem;
   color: var(--text-secondary);
   font-size: 0.82rem;
   line-height: 1.5;
 }
-.review-rules li { margin-top: 0.2rem; }
 
 /* Modpacks ---------------------------------------------------------------- */
 .modpack-page { padding-top: 8rem; padding-bottom: 5rem; }

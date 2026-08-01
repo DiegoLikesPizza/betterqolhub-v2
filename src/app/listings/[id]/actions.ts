@@ -3,11 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@/lib/authz';
-import {
-  isValidRating,
-  checkReviewBody,
-  MAX_BODY_LENGTH,
-} from '@/lib/reviews';
+import { isValidRating, MAX_BODY_LENGTH } from '@/lib/reviews';
 import { notifyReview } from '@/lib/discord-bot';
 import {
   countCustomEmoji,
@@ -52,11 +48,11 @@ export async function submitReview(
   if (!isValidRating(rating)) {
     return { ok: false, message: 'Choose a rating between 1 and 5 stars.' };
   }
-  // The published rules, enforced here rather than only in the form — a server
-  // action is a POST endpoint anyone can call directly.
-  const problem = checkReviewBody(body);
-  if (problem) {
-    return { ok: false, message: problem };
+  // Only that there is something to read. There is deliberately no length or
+  // word floor (see REVIEW_RULE): whether a review helps anyone is a judgement
+  // a character count cannot make, so it is left to moderation.
+  if (!body) {
+    return { ok: false, message: 'Write something about the listing.' };
   }
   // Measured as rendered, so `<:emoji:123…>` counts as one glyph rather than
   // twenty-odd characters of markup.
