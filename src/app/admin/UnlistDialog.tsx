@@ -1,7 +1,8 @@
 'use client';
 
-import { useActionState, useEffect, useRef } from 'react';
+import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useControlledDialog } from './useControlledDialog';
 import { setListingUnlisted, type UnlistState } from './actions';
 import { MAX_UNLIST_REASON_LENGTH } from '@/lib/moderation';
 
@@ -15,14 +16,18 @@ export default function UnlistDialog({
   listingName,
   unlisted,
   reason,
+  openToken,
+  onClose,
 }: {
   listingId: string;
   listingName: string;
   unlisted: boolean;
   reason: string | null;
+  openToken: number | null;
+  onClose: () => void;
 }) {
   const router = useRouter();
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const dialogRef = useControlledDialog(openToken, onClose);
   const [state, action, pending] = useActionState<UnlistState, FormData>(
     setListingUnlisted,
     undefined
@@ -30,22 +35,15 @@ export default function UnlistDialog({
 
   useEffect(() => {
     if (state?.ok) {
-      dialogRef.current?.close();
+      onClose();
       router.refresh();
     }
-  }, [state, router]);
+  }, [state, router, onClose]);
+
+
 
   return (
-    <>
-      <button
-        type="button"
-        className={`table-btn${unlisted ? ' table-btn-pulled' : ''}`}
-        onClick={() => dialogRef.current?.showModal()}
-      >
-        {unlisted ? 'Unlisted' : 'Unlist'}
-      </button>
-
-      <dialog ref={dialogRef} className="modal">
+    <dialog ref={dialogRef} className="modal">
         <form action={action} className="modal-body">
           <h3 className="pixel modal-title">
             {unlisted ? 'Put back in the catalogue' : 'Unlist temporarily'}
@@ -105,7 +103,7 @@ export default function UnlistDialog({
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => dialogRef.current?.close()}
+              onClick={onClose}
             >
               Cancel
             </button>
@@ -113,8 +111,7 @@ export default function UnlistDialog({
               {pending ? 'Saving…' : unlisted ? 'List again' : 'Unlist'}
             </button>
           </div>
-        </form>
-      </dialog>
-    </>
+    </form>
+    </dialog>
   );
 }

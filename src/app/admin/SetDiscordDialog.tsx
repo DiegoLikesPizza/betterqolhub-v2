@@ -1,7 +1,8 @@
 'use client';
 
-import { useActionState, useEffect, useRef } from 'react';
+import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useControlledDialog } from './useControlledDialog';
 import { setUserDiscord, type SetDiscordState } from './actions';
 import { MAX_DISCORD_USERNAME_LENGTH } from '@/lib/account';
 
@@ -17,14 +18,18 @@ export default function SetDiscordDialog({
   username,
   discordUsername,
   linkedByAdmin,
+  openToken,
+  onClose,
 }: {
   userId: string;
   username: string;
   discordUsername: string | null;
   linkedByAdmin: boolean;
+  openToken: number | null;
+  onClose: () => void;
 }) {
   const router = useRouter();
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const dialogRef = useControlledDialog(openToken, onClose);
   const [state, action, pending] = useActionState<SetDiscordState, FormData>(
     setUserDiscord,
     undefined
@@ -32,22 +37,15 @@ export default function SetDiscordDialog({
 
   useEffect(() => {
     if (state?.ok) {
-      dialogRef.current?.close();
+      onClose();
       router.refresh();
     }
-  }, [state, router]);
+  }, [state, router, onClose]);
+
+
 
   return (
-    <>
-      <button
-        type="button"
-        className="table-btn"
-        onClick={() => dialogRef.current?.showModal()}
-      >
-        {discordUsername ? 'Edit Discord' : 'Link Discord'}
-      </button>
-
-      <dialog ref={dialogRef} className="modal">
+    <dialog ref={dialogRef} className="modal">
         <form action={action} className="modal-body">
           <h3 className="pixel modal-title">Discord link</h3>
           <p className="modal-sub">
@@ -109,7 +107,7 @@ export default function SetDiscordDialog({
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => dialogRef.current?.close()}
+              onClick={onClose}
             >
               Cancel
             </button>
@@ -117,8 +115,7 @@ export default function SetDiscordDialog({
               {pending ? 'Saving…' : 'Save'}
             </button>
           </div>
-        </form>
-      </dialog>
-    </>
+    </form>
+    </dialog>
   );
 }

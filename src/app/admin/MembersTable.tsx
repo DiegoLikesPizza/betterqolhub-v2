@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useCallback, useMemo, useState, useTransition } from 'react';
 import { setUserRole } from './actions';
 import Pager, { pageSlice, pageCount } from './Pager';
 import SetDiscordDialog from './SetDiscordDialog';
+import RowMenu from './RowMenu';
 
 type Member = {
   id: string;
@@ -144,6 +145,11 @@ export default function MembersTable({
 function MemberRow({ member, isSelf }: { member: Member; isSelf: boolean }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Held by the row rather than the dialog, so closing the menu cannot unmount
+  // an open modal.
+  const [discordToken, setDiscordToken] = useState<number | null>(null);
+  const openDiscord = useCallback(() => setDiscordToken((n) => (n ?? 0) + 1), []);
+  const closeDiscord = useCallback(() => setDiscordToken(null), []);
   const isAdmin = member.role === 'ADMIN';
 
   return (
@@ -176,36 +182,41 @@ function MemberRow({ member, isSelf }: { member: Member; isSelf: boolean }) {
       <td>{member.reviewCount}</td>
       <td className="table-muted">{new Date(member.createdAt).toLocaleDateString()}</td>
       <td className="col-actions">
+        <RowMenu
+          label={`Actions for ${member.username}`}
+          items={[
+            {
+              label: member.discordUsername ? 'Edit Discord link' : 'Link Discord',
+              onSelect: openDiscord,
+            },
+            {
+              // Self-demotion is blocked server-side too; disabling it here just
+              // avoids offering an action that will always fail.
+              label: isAdmin ? 'Revoke admin' : 'Make admin',
+              disabled: pending || (isSelf && isAdmin),
+              onSelect: () => {
+                setError(null);
+                startTransition(async () => {
+                  try {
+                    await setUserRole(member.id, !isAdmin);
+                  } catch {
+                    setError('Could not change role.');
+                  }
+                });
+              },
+            },
+          ]}
+        />
+
+        {/* Outside the menu on purpose — see RowMenu. */}
         <SetDiscordDialog
           userId={member.id}
           username={member.username}
           discordUsername={member.discordUsername}
           linkedByAdmin={member.discordLinkedByAdmin}
+          openToken={discordToken}
+          onClose={closeDiscord}
         />
-
-        {/* Self-demotion is blocked server-side too; hiding it here just avoids
-            offering an action that will always fail. */}
-        {isSelf && isAdmin ? (
-          <span className="table-muted">—</span>
-        ) : (
-          <button
-            type="button"
-            className="table-btn"
-            disabled={pending}
-            onClick={() => {
-              setError(null);
-              startTransition(async () => {
-                try {
-                  await setUserRole(member.id, !isAdmin);
-                } catch {
-                  setError('Could not change role.');
-                }
-              });
-            }}
-          >
-            {pending ? 'Saving…' : isAdmin ? 'Revoke admin' : 'Make admin'}
-          </button>
-        )}
       </td>
     </tr>
   );

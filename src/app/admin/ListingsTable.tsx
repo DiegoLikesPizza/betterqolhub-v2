@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, useTransition } from 'react';
+import { useCallback, useMemo, useState, useTransition } from 'react';
 import { deleteListing, setListingTrust } from './actions';
 import { CATEGORIES, categoryLabel } from '@/lib/categories';
 import { stars, ratingColor, type RatingSummary } from '@/lib/reviews';
@@ -15,6 +15,7 @@ import {
 import EditListingDialog from './EditListingDialog';
 import SetOwnerDialog from './SetOwnerDialog';
 import UnlistDialog from './UnlistDialog';
+import RowMenu from './RowMenu';
 import Pager, { pageSlice, pageCount } from './Pager';
 
 type Row = {
@@ -218,6 +219,17 @@ function ListingRow({ listing }: { listing: Row }) {
   const [pending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Which dialog the row's menu opened, if any. Held here rather than in the
+  // dialogs so they survive the menu closing. The counter makes every request a
+  // new value — see useControlledDialog for why a boolean is not enough.
+  const [dialog, setDialog] = useState<{ kind: 'edit' | 'owner' | 'unlist'; n: number } | null>(null);
+  const openDialog = useCallback(
+    (kind: 'edit' | 'owner' | 'unlist') => setDialog((d) => ({ kind, n: (d?.n ?? 0) + 1 })),
+    []
+  );
+  const closeDialog = useCallback(() => setDialog(null), []);
+  const tokenFor = (kind: 'edit' | 'owner' | 'unlist') =>
+    dialog?.kind === kind ? dialog.n : null;
 
   function run(fn: () => Promise<unknown>) {
     setError(null);
@@ -276,30 +288,9 @@ function ListingRow({ listing }: { listing: Row }) {
         </span>
       </td>
       <td className="col-actions">
-        <EditListingDialog listing={listing} />
-
-        <SetOwnerDialog
-          listingId={listing.id}
-          listingName={listing.name}
-          ownerUsername={listing.ownerUsername}
-        />
-
-        <UnlistDialog
-          listingId={listing.id}
-          listingName={listing.name}
-          unlisted={listing.unlistedAt !== null}
-          reason={listing.unlistedReason}
-        />
-
-        <button
-          type="button"
-          className="table-btn"
-          disabled={pending}
-          onClick={() => run(() => setListingTrust(listing.id, !listing.isTrusted))}
-        >
-          {listing.isTrusted ? 'Mark unverified' : 'Mark trusted'}
-        </button>
-
+        {/* Delete keeps its two-step guard in the open rather than inside the
+            menu: a destructive confirm that appears where the menu just was,
+            under the cursor, is how people delete the wrong row. */}
         {confirming ? (
           <>
             <button
@@ -308,22 +299,61 @@ function ListingRow({ listing }: { listing: Row }) {
               disabled={pending}
               onClick={() => run(() => deleteListing(listing.id))}
             >
-              {pending ? 'Deleting…' : 'Confirm'}
+              {pending ? 'Deleting…' : 'Confirm delete'}
             </button>
             <button type="button" className="table-btn" onClick={() => setConfirming(false)}>
               Cancel
             </button>
           </>
         ) : (
-          <button
-            type="button"
-            className="table-btn table-btn-danger"
-            disabled={pending}
-            onClick={() => setConfirming(true)}
-          >
-            Delete
-          </button>
+          <RowMenu
+            label={`Actions for ${listing.name}`}
+            items={[
+              { label: 'Edit', onSelect: () => openDialog('edit') },
+              {
+                label: listing.ownerUsername ? `Owner: ${listing.ownerUsername}` : 'Set owner',
+                onSelect: () => openDialog('owner'),
+              },
+              {
+                label: listing.unlistedAt ? 'Unlisted — put back' : 'Unlist',
+                onSelect: () => openDialog('unlist'),
+              },
+              {
+                label: listing.isTrusted ? 'Mark unverified' : 'Mark trusted',
+                disabled: pending,
+                onSelect: () => run(() => setListingTrust(listing.id, !listing.isTrusted)),
+              },
+              {
+                label: 'Delete',
+                danger: true,
+                disabled: pending,
+                onSelect: () => setConfirming(true),
+              },
+            ]}
+          />
         )}
+
+        {/* Outside the menu on purpose — see RowMenu. */}
+        <EditListingDialog
+          listing={listing}
+          openToken={tokenFor('edit')}
+          onClose={closeDialog}
+        />
+        <SetOwnerDialog
+          listingId={listing.id}
+          listingName={listing.name}
+          ownerUsername={listing.ownerUsername}
+          openToken={tokenFor('owner')}
+          onClose={closeDialog}
+        />
+        <UnlistDialog
+          listingId={listing.id}
+          listingName={listing.name}
+          unlisted={listing.unlistedAt !== null}
+          reason={listing.unlistedReason}
+          openToken={tokenFor('unlist')}
+          onClose={closeDialog}
+        />
       </td>
     </tr>
   );
