@@ -135,6 +135,40 @@ export async function notifyAnnouncement(announcement: AnnouncementLike): Promis
   }
 }
 
+type ChangeRequestLike = {
+  listingName: string;
+  author: string;
+  fields: string[];
+  note: string | null;
+  recipients: string[];
+};
+
+/**
+ * DMs the admins that a team has proposed an edit to its listing.
+ *
+ * The recipient list is resolved here rather than by the bot: who counts as an
+ * admin is the site's question, and the bot has no notion of site roles.
+ *
+ * Best-effort like the rest of this file. The proposal is already in the queue
+ * and the Teams tab carries a count of what is waiting — that is the durable
+ * signal, and this is only the nudge that saves someone from having to check.
+ */
+export async function notifyChangeRequest(request: ChangeRequestLike): Promise<void> {
+  if (!isBotConfigured() || request.recipients.length === 0) return;
+  try {
+    const result = await callBot(
+      '/events/change-request',
+      { ...request, url: `${SITE_URL}/admin/teams` },
+      EVENT_TIMEOUT_MS
+    );
+    if (!result.ok) {
+      console.error(`[discord-bot] change request failed (${result.status})`, result.body);
+    }
+  } catch (error) {
+    console.error('[discord-bot] change request could not reach the bot:', error);
+  }
+}
+
 type CachedEmoji = { id: string; name: string; animated: boolean };
 
 let emojiCache: { at: number; emojis: CachedEmoji[] } | null = null;

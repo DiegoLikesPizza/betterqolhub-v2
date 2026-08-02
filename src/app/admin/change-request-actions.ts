@@ -7,6 +7,7 @@ import { requireListingTeam } from '@/lib/team-access';
 import {
   MAX_CHANGE_NOTE_LENGTH,
   MAX_DECISION_NOTE_LENGTH,
+  CHANGE_FIELDS,
   type ChangeSnapshot,
 } from '@/lib/change-requests';
 import {
@@ -17,7 +18,7 @@ import {
   MAX_PRICE_LENGTH,
   type PricingKey,
 } from '@/lib/pricing';
-import { notifyListing } from '@/lib/discord-bot';
+import { notifyListing, notifyChangeRequest } from '@/lib/discord-bot';
 
 export type ChangeRequestState = { ok?: boolean; message?: string } | undefined;
 
@@ -113,6 +114,12 @@ export async function submitChangeRequest(
   await prisma.listingChangeRequest.create({
     data: { ...snapshot, listingId, authorId: author.id, note: note || null },
   });
+
+  // Only on a *new* proposal. Editing one that is already waiting would DM the
+  // admins again for something they have already been told about, and a
+  // notification that fires on every keystroke-level revision is one people
+  // learn to ignore.
+  await dmAdmins(listingId, author.name ?? 'A developer', snapshot, note);
 
   revalidatePath('/admin', 'layout');
   revalidatePath(`/listings/${listingId}`);
@@ -222,4 +229,56 @@ export async function rejectChangeRequest(
   revalidatePath('/admin', 'layout');
   revalidatePath(`/listings/${request.listingId}`);
   return { ok: true, message: 'Rejected.' };
+}
+
+/**
+ * Tells the admins a proposal is waiting.
+ *
+ * Wrapped so a failure here cannot fail the submission: the team's proposal is
+ * already saved, and a DM that did not go out is not their problem.
+ */
+async function dmAdmins(
+  listingId: string,
+  author: string,
+  proposed: ChangeSnapshot,
+  note: string
+): Promise<void> {
+  try {
+    const [listing, admins] = await Promise.all([
+      prisma.listing.findUnique({
+        where: { id: listingId },
+        select: {
+          name: true,
+          developer: true,
+          description: true,
+          url: true,
+          secondaryUrl: true,
+          pricing: true,
+          price: true,
+        },
+      }),
+      prisma.user.findMany({
+        where: { role: 'ADMIN', discordId: { not: null } },
+        select: { discordId: true },
+      }),
+    ]);
+    if (!listing) return;
+
+    // Named rather than counted: "Name, Primary link" tells you whether this
+    // needs looking at now, where "2 fields" does not.
+    const current = listing as unknown as Record<string, string | null>;
+    const fields = CHANGE_FIELDS.filter(
+      ({ key }) => (current[key] ?? '') !== ((proposed as Record<string, string | null>)[key] ?? '')
+    ).map(({ label }) => label);
+
+    await notifyChangeRequest({
+      listingName: listing.name,
+      author,
+      fields,
+      note: note || null,
+      recipients: admins.map((a) => a.discordId!).filter(Boolean),
+    });
+  } catch (error) {
+    console.error('[change-requests] could not notify admins', error);
+  }
 }

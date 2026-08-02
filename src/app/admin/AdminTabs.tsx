@@ -20,7 +20,13 @@ const TABS = [
   { href: '/admin/reviews', label: 'Reviews' },
 ] as const;
 
-export default function AdminTabs() {
+/**
+ * @param pendingChanges Proposals waiting on a decision. Shown on the Teams tab
+ *   so the queue is visible from anywhere in the dashboard — it used to be a
+ *   count on the Teams page itself, which nobody sees until they go looking, and
+ *   a team can be left waiting for days on the strength of that.
+ */
+export default function AdminTabs({ pendingChanges = 0 }: { pendingChanges?: number }) {
   const pathname = usePathname();
 
   return (
@@ -39,6 +45,16 @@ export default function AdminTabs() {
             aria-current={active ? 'page' : undefined}
           >
             {tab.label}
+            {tab.href === '/admin/teams' && pendingChanges > 0 && (
+              <span
+                className="tab-badge"
+                aria-label={`${pendingChanges} proposed ${
+                  pendingChanges === 1 ? 'change' : 'changes'
+                } waiting`}
+              >
+                {pendingChanges}
+              </span>
+            )}
           </Link>
         );
       })}
