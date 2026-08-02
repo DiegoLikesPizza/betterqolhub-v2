@@ -26,7 +26,9 @@ export async function GET(request: Request) {
     }
 
     const listings = await prisma.listing.findMany({
-      where: category ? { category } : undefined,
+      // Unlisted entries are withheld here too. The bot reads this endpoint, so
+      // leaving them in would put back exactly what unlisting removes.
+      where: { unlistedAt: null, ...(category ? { category } : {}) },
       orderBy: { createdAt: 'desc' },
     });
     return NextResponse.json(listings, { status: 200 });

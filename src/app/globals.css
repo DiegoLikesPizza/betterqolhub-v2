@@ -1209,6 +1209,39 @@ select.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; fo
 }
 .char-count-over { color: var(--danger); }
 
+/* Unlisted state ---------------------------------------------------------- */
+/* The trust badge's third state. Red rather than the gold used for "Unverified":
+   unverified means nobody has checked yet, this means something is wrong. */
+.trust-pulled {
+  color: var(--danger);
+  border-color: rgba(255, 85, 85, 0.45);
+  background: rgba(255, 85, 85, 0.08);
+}
+.detail-pulled {
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border: 2px solid rgba(255, 85, 85, 0.4);
+  border-left-width: 4px;
+  border-radius: 2px;
+  background: rgba(255, 85, 85, 0.07);
+  color: var(--text-lore);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+/* Reads as a state in the admin table, not as an action still to take. */
+.table-btn-pulled { color: var(--danger); border-color: rgba(255, 85, 85, 0.45); }
+
+/* Sits the trust badge and the follow button together at the top right, so the
+   two things you decide on a listing — is it vetted, do I want its updates —
+   are in one place. */
+.detail-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 /* Follow button ----------------------------------------------------------- */
 .follow-wrap { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .follow-btn {
@@ -1251,14 +1284,17 @@ select.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; fo
   transition: transform 0.1s ease;
 }
 .notif-bell:hover { transform: translateY(-1px); }
-/* The desaturation sits on the glyph, not the button: a filter applies to the
-   whole subtree, and on the button it drained the colour out of the badge. */
+/* currentColor on the rects, so the bell is coloured here rather than filtered
+   — the previous emoji needed a grayscale filter, which also drained the badge
+   sitting inside the button. */
 .notif-icon {
-  display: inline-block;
-  filter: grayscale(1) brightness(1.6);
-  transition: filter 0.15s ease;
+  display: block;
+  color: var(--text-secondary);
+  transition: color 0.15s ease;
 }
-.notif-bell:hover .notif-icon { filter: none; }
+.notif-bell:hover .notif-icon { color: var(--gold); }
+/* Unread is worth noticing without opening anything. */
+.notif-bell-unread .notif-icon { color: var(--gold); }
 /* Sits on the bell rather than beside it, so the bar's width does not shift
    when the count appears or clears. */
 .notif-badge {

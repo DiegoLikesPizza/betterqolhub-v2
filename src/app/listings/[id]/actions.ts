@@ -71,10 +71,19 @@ export async function submitReview(
   // would throw a less helpful error.
   const listing = await prisma.listing.findUnique({
     where: { id: listingId },
-    select: { id: true, name: true },
+    select: { id: true, name: true, ownerId: true },
   });
   if (!listing) {
     return { ok: false, message: 'That listing no longer exists.' };
+  }
+  // A developer rating their own product is not a review. Enforced here rather
+  // than only by hiding the form, since this is a POST endpoint anyone can call
+  // — and ownership can be granted after someone has already loaded the page.
+  if (listing.ownerId && listing.ownerId === user.id) {
+    return {
+      ok: false,
+      message: 'You are this listing’s developer, so you cannot review it.',
+    };
   }
 
   let saved;

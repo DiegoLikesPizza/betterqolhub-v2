@@ -14,6 +14,47 @@ import {
  * panel does no fetching of its own, so opening it costs nothing and the badge
  * is correct on first paint rather than popping in after hydration.
  */
+/**
+ * A bell drawn on a 12×12 grid, one rect per row.
+ *
+ * An emoji rendered in whatever the OS ships, which on Windows is a glossy
+ * full-colour bell that sits in a navbar made of hard-edged blocks and a pixel
+ * font looking like it wandered in from another site. This is inline (no extra
+ * request, same as the burger menu), inherits colour through currentColor, and
+ * `crispEdges` keeps the pixels square at any zoom.
+ */
+function BellIcon() {
+  const rows: Array<[x: number, w: number]> = [
+    [5, 2], // handle
+    [4, 4],
+    [3, 6],
+    [3, 6],
+    [2, 8],
+    [2, 8],
+    [1, 10], // rim
+    [1, 10],
+  ];
+
+  return (
+    <svg
+      className="notif-icon"
+      viewBox="0 0 12 12"
+      width="18"
+      height="18"
+      shapeRendering="crispEdges"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {rows.map(([x, w], i) => (
+        <rect key={i} x={x} y={i + 1} width={w} height="1" fill="currentColor" />
+      ))}
+      {/* Clapper, hanging below the rim with a gap so the shape reads as a bell
+          rather than a mushroom. */}
+      <rect x="5" y="10" width="2" height="1" fill="currentColor" />
+    </svg>
+  );
+}
+
 export default function NotificationCentre({
   feed,
   markRead,
@@ -69,7 +110,7 @@ export default function NotificationCentre({
     <div className="notif" ref={wrapRef}>
       <button
         type="button"
-        className="notif-bell"
+        className={`notif-bell${feed.unread > 0 ? ' notif-bell-unread' : ''}`}
         onClick={toggle}
         aria-expanded={open}
         aria-label={
@@ -78,9 +119,7 @@ export default function NotificationCentre({
             : 'Notifications'
         }
       >
-        {/* Drawn as a glyph rather than an SVG so it costs no extra request,
-            matching how the burger menu is done. */}
-        <span className="notif-icon" aria-hidden="true">🔔</span>
+        <BellIcon />
         {feed.unread > 0 && <span className="notif-badge">{badge}</span>}
       </button>
 

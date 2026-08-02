@@ -16,6 +16,7 @@ import { fetchGuildEmojis } from '@/lib/discord-bot';
 import { recordListingViewFor } from '@/lib/stats';
 import { pricingBadge, pricingColor } from '@/lib/pricing';
 import { ANNOUNCEMENT_HISTORY_LIMIT } from '@/lib/announcements';
+import { UNLISTED_NOTICE } from '@/lib/moderation';
 import ReviewForm from './ReviewForm';
 import ReviewList from './ReviewList';
 import Announcements from './Announcements';
@@ -133,6 +134,12 @@ export default async function ListingDetailPage({
     user && (user.role === 'ADMIN' || (listing.ownerId && listing.ownerId === user.id))
   );
 
+  // A developer rating their own product is not a review, it is marketing with
+  // stars on it. The server action refuses it too; this decides what is drawn.
+  const isOwnListing = Boolean(user && listing.ownerId && listing.ownerId === user.id);
+
+  const unlisted = listing.unlistedAt !== null;
+
   return (
     <div className="container narrow-page">
       <Link href="/listings" className="back-link">← All listings</Link>
@@ -143,10 +150,27 @@ export default async function ListingDetailPage({
             <h1 className="pixel detail-title">{listing.name}</h1>
             {listing.developer && <p className="tooltip-dev">by {listing.developer}</p>}
           </div>
-          <span className={`trust ${listing.isTrusted ? 'trust-yes' : 'trust-no'}`}>
-            {listing.isTrusted ? '✓ Trusted' : 'Unverified'}
-          </span>
+          <div className="detail-head-actions">
+            {/* While unlisted the trust badge is suppressed rather than shown
+                alongside a warning — "✓ Trusted" next to "we are looking into
+                reports" is the site contradicting itself. */}
+            <span
+              className={`trust ${
+                unlisted ? 'trust-pulled' : listing.isTrusted ? 'trust-yes' : 'trust-no'
+              }`}
+            >
+              {unlisted ? '⚠ Under review' : listing.isTrusted ? '✓ Trusted' : 'Unverified'}
+            </span>
+            <FollowButton
+              listingId={listing.id}
+              signedIn={Boolean(user)}
+              following={Boolean(follow)}
+              followers={listing._count.followers}
+            />
+          </div>
         </header>
+
+        {unlisted && <p className="detail-pulled">{UNLISTED_NOTICE}</p>}
 
         <p className="tooltip-lore" style={{ fontSize: '1.05rem' }}>{listing.description}</p>
 
@@ -175,13 +199,6 @@ export default async function ListingDetailPage({
             <span className="rating-meta">No reviews yet</span>
           )}
         </div>
-
-        <FollowButton
-          listingId={listing.id}
-          signedIn={Boolean(user)}
-          following={Boolean(follow)}
-          followers={listing._count.followers}
-        />
 
         {/* Both buttons go through /go/<id>, which counts the click and then
             redirects to the real destination. The label still comes from the
@@ -229,6 +246,13 @@ export default async function ListingDetailPage({
                 Sign in
               </Link>{' '}
               to leave a review.
+            </p>
+          </div>
+        ) : isOwnListing ? (
+          <div className="form-card" style={{ textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-secondary)' }}>
+              You are listed as this listing&rsquo;s developer, so you cannot review
+              it. Use <strong>Post announcement</strong> above to say something.
             </p>
           </div>
         ) : !discordLinked ? (

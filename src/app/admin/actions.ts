@@ -13,6 +13,7 @@ import {
   type PricingKey,
 } from '@/lib/pricing';
 import { requireAdmin } from '@/lib/authz';
+import { MAX_UNLIST_REASON_LENGTH } from '@/lib/moderation';
 import { notifyListing } from '@/lib/discord-bot';
 
 export type AddListingState = {
@@ -181,6 +182,63 @@ export async function setListingTrust(listingId: string, isTrusted: boolean) {
 
   revalidatePath('/admin', 'layout');
   revalidatePath('/listings');
+}
+
+export type UnlistState = {
+  ok?: boolean;
+  message?: string;
+} | undefined;
+
+/**
+ * Pulls a listing from the public catalogue while something is looked into, or
+ * puts it back.
+ *
+ * Not a delete: reviews, stats and announcements stay, so relisting is one
+ * click and nothing is lost if the accusation does not hold up. What it does
+ * do is stop the hub promoting the thing — hidden from /listings and from the
+ * public API, and the Discord post is removed, since a post the bot left up is
+ * still the hub recommending it.
+ */
+export async function setListingUnlisted(
+  _prevState: UnlistState,
+  formData: FormData
+): Promise<UnlistState> {
+  try {
+    await requireAdmin();
+  } catch {
+    return { ok: false, message: 'Admin access required.' };
+  }
+
+  const listingId = String(formData.get('listingId') ?? '').trim();
+  const unlist = formData.get('unlist') === '1';
+  const reason = String(formData.get('reason') ?? '').trim();
+
+  if (!listingId) return { ok: false, message: 'Missing listing.' };
+  if (unlist && !reason) {
+    // Required so the admin log is not a row of unexplained removals nobody can
+    // review later.
+    return { ok: false, message: 'Say why — it is only visible to admins.' };
+  }
+
+  const updated = await prisma.listing.update({
+    where: { id: listingId },
+    data: unlist
+      ? { unlistedAt: new Date(), unlistedReason: reason.slice(0, MAX_UNLIST_REASON_LENGTH) }
+      : { unlistedAt: null, unlistedReason: null },
+  });
+
+  // Removing the post and putting it back are the same two calls the bot
+  // already understands from add and delete.
+  await notifyListing(unlist ? 'deleted' : 'created', unlist ? { id: listingId } : updated);
+
+  revalidatePath('/admin', 'layout');
+  revalidatePath('/listings');
+  revalidatePath(`/listings/${listingId}`);
+
+  return {
+    ok: true,
+    message: unlist ? 'Unlisted and removed from Discord.' : 'Listed again.',
+  };
 }
 
 export type SetOwnerState = {

@@ -14,6 +14,7 @@ import {
 } from '@/lib/pricing';
 import EditListingDialog from './EditListingDialog';
 import SetOwnerDialog from './SetOwnerDialog';
+import UnlistDialog from './UnlistDialog';
 import Pager, { pageSlice, pageCount } from './Pager';
 
 type Row = {
@@ -30,6 +31,8 @@ type Row = {
   pricing: string | null;
   price: string | null;
   ownerUsername: string | null;
+  unlistedAt: string | null;
+  unlistedReason: string | null;
 };
 
 /**
@@ -279,6 +282,13 @@ function ListingRow({ listing }: { listing: Row }) {
           listingId={listing.id}
           listingName={listing.name}
           ownerUsername={listing.ownerUsername}
+        />
+
+        <UnlistDialog
+          listingId={listing.id}
+          listingName={listing.name}
+          unlisted={listing.unlistedAt !== null}
+          reason={listing.unlistedReason}
         />
 
         <button

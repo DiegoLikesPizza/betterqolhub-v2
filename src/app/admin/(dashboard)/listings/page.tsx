@@ -14,7 +14,11 @@ export default async function AdminListingsPage() {
         <AddListingDialog />
       </div>
       <ListingsTable
-        listings={listings.map((l) => ({ ...l, createdAt: l.createdAt.toISOString() }))}
+        listings={listings.map((l) => ({
+          ...l,
+          createdAt: l.createdAt.toISOString(),
+          unlistedAt: l.unlistedAt?.toISOString() ?? null,
+        }))}
       />
     </section>
   );

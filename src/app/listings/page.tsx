@@ -50,6 +50,10 @@ export default async function ListingsPage() {
   await recordPageHitFor(PAGE_KEYS.listings, (await headers()).get('user-agent'));
 
   const listings = await prisma.listing.findMany({
+    // Unlisted entries are pulled while something is looked into — the whole
+    // point is that the hub stops surfacing them, so they leave the catalogue
+    // entirely rather than appearing with a warning.
+    where: { unlistedAt: null },
     orderBy: { createdAt: 'desc' },
     // Only the ratings are needed for the grid; review bodies are loaded on the
     // detail page.

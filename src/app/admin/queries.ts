@@ -18,6 +18,8 @@ export type DashboardListing = {
   price: string | null;
   /// Username of the account allowed to post announcements, or null.
   ownerUsername: string | null;
+  unlistedAt: Date | null;
+  unlistedReason: string | null;
 };
 
 /**
@@ -162,6 +164,8 @@ export async function getAdminListings(): Promise<DashboardListing[]> {
       pricing: true,
       price: true,
       owner: { select: { username: true } },
+      unlistedAt: true,
+      unlistedReason: true,
       reviews: { select: { rating: true } },
     },
   });

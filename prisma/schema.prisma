@@ -154,6 +154,19 @@ model Listing {
   ownerId String?
   owner   User?   @relation("ListingOwner", fields: [ownerId], references: [id], onDelete: SetNull)
 
+  /// When an admin pulled this listing from the public catalogue, or null while
+  /// it is listed normally.
+  ///
+  /// A timestamp rather than a boolean because the state is meant to be
+  /// temporary — pulled while an accusation is looked into — and "since when"
+  /// is the first thing anyone reviewing the backlog asks. Deliberately not
+  /// deletion: the reviews, the stats and the history stay, so relisting is one
+  /// click and nothing is lost if the accusation does not hold up.
+  unlistedAt     DateTime?
+  /// Admin-facing note on why. Never rendered to the public — an unproven
+  /// accusation is not something to publish under the hub's name.
+  unlistedReason String?
+
   reviews       Review[]
   stats         ListingStat[]
   announcements Announcement[]
