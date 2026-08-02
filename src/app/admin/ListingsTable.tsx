@@ -296,6 +296,11 @@ function ListingRow({ listing, teams }: { listing: Row; teams: TeamOption[] }) {
         </span>
       </td>
       <td className="col-actions">
+        {/* The flex row lives here rather than on the cell: `display: flex` on a
+            <td> stops it being a table-cell, so it no longer stretches to the
+            row height and vertical-align is ignored — which left the button
+            pinned to the top of every taller row. */}
+        <div className="row-actions">
         {/* Delete keeps its two-step guard in the open rather than inside the
             menu: a destructive confirm that appears where the menu just was,
             under the cursor, is how people delete the wrong row. */}
@@ -340,6 +345,7 @@ function ListingRow({ listing, teams }: { listing: Row; teams: TeamOption[] }) {
             ]}
           />
         )}
+        </div>
 
         {/* Outside the menu on purpose — see RowMenu. */}
         <EditListingDialog

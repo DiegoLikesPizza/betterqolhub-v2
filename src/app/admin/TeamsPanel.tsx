@@ -222,14 +222,16 @@ function TeamCard({ team }: { team: TeamRow }) {
                   </select>
                 </td>
                 <td className="col-actions">
-                  <button
-                    type="button"
-                    className="table-btn table-btn-danger"
-                    disabled={pending}
-                    onClick={() => run(() => removeTeamMember(team.id, member.userId))}
-                  >
-                    Remove
-                  </button>
+                  <div className="row-actions">
+                    <button
+                      type="button"
+                      className="table-btn table-btn-danger"
+                      disabled={pending}
+                      onClick={() => run(() => removeTeamMember(team.id, member.userId))}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

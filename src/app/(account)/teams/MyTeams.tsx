@@ -202,18 +202,20 @@ function TeamCard({ team, viewerId }: { team: MyTeam; viewerId: string }) {
                 </td>
                 {isLead && (
                   <td className="col-actions">
-                    {member.userId === viewerId ? (
-                      <span className="table-muted">—</span>
-                    ) : (
-                      <button
-                        type="button"
-                        className="table-btn table-btn-danger"
-                        disabled={pending}
-                        onClick={() => run(() => removeTeamMember(team.id, member.userId))}
-                      >
-                        Remove
-                      </button>
-                    )}
+                    <div className="row-actions">
+                      {member.userId === viewerId ? (
+                        <span className="table-muted">—</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="table-btn table-btn-danger"
+                          disabled={pending}
+                          onClick={() => run(() => removeTeamMember(team.id, member.userId))}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
                   </td>
                 )}
               </tr>

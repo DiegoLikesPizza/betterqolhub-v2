@@ -1033,7 +1033,13 @@ select.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; fo
   color: var(--text-secondary);
 }
 .admin-table td { font-size: 0.95rem; }
-.col-actions { white-space: nowrap; display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+/* The cell stays a real table-cell. `display: flex` here would take it out of
+   the table layout: it would stop stretching to the row height and ignore
+   vertical-align, which pinned the actions to the top of any row tall enough to
+   wrap — every listing with a developer line under its name. The flex row lives
+   on .row-actions inside it instead. */
+.col-actions { white-space: nowrap; }
+.row-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
 .table-link { color: var(--text-primary); font-family: var(--font-display); }
 .table-link:hover { color: var(--gold); }
 .table-muted { color: var(--text-secondary); font-size: 0.85rem; }

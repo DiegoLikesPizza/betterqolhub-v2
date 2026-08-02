@@ -210,6 +210,9 @@ function MemberRow({ member, isSelf }: { member: Member; isSelf: boolean }) {
       <td>{member.reviewCount}</td>
       <td className="table-muted">{new Date(member.createdAt).toLocaleDateString()}</td>
       <td className="col-actions">
+        {/* See ListingsTable: the flex row belongs on a wrapper, not on the
+            <td>, or the cell stops stretching to the row height. */}
+        <div className="row-actions">
         <RowMenu
           label={`Actions for ${member.username}`}
           items={[
@@ -241,6 +244,7 @@ function MemberRow({ member, isSelf }: { member: Member; isSelf: boolean }) {
             },
           ]}
         />
+        </div>
 
         {/* Outside the menu on purpose — see RowMenu. */}
         <SetDiscordDialog
