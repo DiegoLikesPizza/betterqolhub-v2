@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { register, type AuthFormState } from '../actions';
 
-export default function RegisterForm() {
+/**
+ * @param callbackUrl Where to land after signing up. Someone who arrived from a
+ *   listing's "create an account to leave a review" should end up back on that
+ *   listing, not on the home page hunting for it again.
+ */
+export default function RegisterForm({ callbackUrl }: { callbackUrl?: string }) {
   const router = useRouter();
   const [state, action, pending] = useActionState<AuthFormState, FormData>(register, undefined);
 
@@ -23,9 +28,13 @@ export default function RegisterForm() {
     signIn('credentials', { username, password, redirect: false }).then((res) => {
       if (res?.error) {
         // Account exists but auto sign-in failed — send them to sign in manually.
-        router.push('/login');
+        router.push(
+          callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/login'
+        );
       } else {
-        router.push('/');
+        // Only same-site paths are followed, so a crafted ?callbackUrl= cannot
+        // bounce a freshly created account off to another host.
+        router.push(callbackUrl?.startsWith('/') ? callbackUrl : '/');
         router.refresh();
       }
     });

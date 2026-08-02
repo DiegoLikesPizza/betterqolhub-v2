@@ -20,6 +20,7 @@ import { pricingBadge, pricingColor } from '@/lib/pricing';
 import { ANNOUNCEMENT_HISTORY_LIMIT } from '@/lib/announcements';
 import { UNLISTED_NOTICE } from '@/lib/moderation';
 import ReviewDialog from './ReviewDialog';
+import ReviewGateDialog, { type ReviewGate } from './ReviewGateDialog';
 import ReviewList from './ReviewList';
 import Announcements from './Announcements';
 import FollowButton from './FollowButton';
@@ -165,6 +166,17 @@ export default async function ListingDetailPage({
   // explanation for a `false`.
   const canReview = Boolean(user) && !isOwnListing && !reviewBanned && discordLinked;
 
+  // Ordered by what the reader can act on. Being told to link Discord is useless
+  // advice for an account that is banned, and worse for one that is not signed
+  // in at all.
+  const reviewGate: ReviewGate = !user
+    ? 'signed-out'
+    : isOwnListing
+      ? 'own-listing'
+      : reviewBanned
+        ? 'banned'
+        : 'no-discord';
+
   return (
     <div className="container narrow-page">
       <Link href="/listings" className="back-link">← All listings</Link>
@@ -307,55 +319,19 @@ export default async function ListingDetailPage({
       <section style={{ marginTop: '3rem' }}>
         <div className="reviews-head">
           <h2 className="pixel section-title">Community Reviews</h2>
-          {canReview && (
+          {/* The button is in the same place for everyone. Whether it opens the
+              form or an explanation is decided behind it, so the section does
+              not rearrange itself depending on who is looking. */}
+          {canReview ? (
             <ReviewDialog
               listingId={listing.id}
               customEmoji={customEmoji}
               existing={ownReview ? { rating: ownReview.rating, body: ownReview.body } : null}
             />
+          ) : (
+            <ReviewGateDialog gate={reviewGate} listingId={listing.id} />
           )}
         </div>
-
-        {/* Shown only in place of the button. Someone who can review does not
-            need to be told why they can. */}
-        {!canReview && (
-          <div className="form-card" style={{ textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-secondary)' }}>
-              {!user ? (
-                <>
-                  <Link
-                    href={`/login?callbackUrl=/listings/${listing.id}`}
-                    style={{ color: 'var(--gold)' }}
-                  >
-                    Sign in
-                  </Link>{' '}
-                  to leave a review.
-                </>
-              ) : isOwnListing ? (
-                <>
-                  You are on this listing&rsquo;s team, so you cannot review it. Use{' '}
-                  <strong>Post announcement</strong> above to say something.
-                </>
-              ) : reviewBanned ? (
-                // Before the Discord prompt: sending a banned account through a
-                // setup flow that changes nothing would be a lie. The reason is
-                // not shown — it is an admin note.
-                <>
-                  Your account cannot post reviews. If you think that is a mistake,
-                  reach out to an admin on Discord.
-                </>
-              ) : (
-                <>
-                  Reviews are tied to a verified Discord account.{' '}
-                  <Link href="/settings" style={{ color: 'var(--gold)' }}>
-                    Link yours in Settings
-                  </Link>{' '}
-                  to post one.
-                </>
-              )}
-            </p>
-          </div>
-        )}
 
         <ReviewList
           reviews={listing.reviews.map((r) => ({
