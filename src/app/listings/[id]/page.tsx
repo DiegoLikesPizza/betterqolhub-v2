@@ -6,6 +6,8 @@ import type { CSSProperties } from 'react';
 import { SITE_URL } from '@/lib/site';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@/lib/authz';
+import { listingAccessFor, isOnListingTeam } from '@/lib/team-access';
+import { getChangeRequests } from '@/lib/team-queries';
 import {
   categoryColor,
   categoryLabel,
@@ -21,6 +23,7 @@ import ReviewForm from './ReviewForm';
 import ReviewList from './ReviewList';
 import Announcements from './Announcements';
 import FollowButton from './FollowButton';
+import ProposeChanges from './ProposeChanges';
 
 export const revalidate = 0;
 
@@ -131,16 +134,26 @@ export default async function ListingDetailPage({
   const discordLinked = Boolean(account?.discordId);
   const reviewBanned = Boolean(account?.reviewBannedAt);
 
-  // The composer is offered to the listing's owner and to admins. The server
+  // The composer is offered to the listing's team and to admins. The server
   // action re-derives this from the database, so this only decides what is
   // drawn — it is not what grants the permission.
-  const canPost = Boolean(
-    user && (user.role === 'ADMIN' || (listing.ownerId && listing.ownerId === user.id))
-  );
+  const access = await listingAccessFor(user, listing.id);
+  const canPost = access.isMember;
 
   // A developer rating their own product is not a review, it is marketing with
-  // stars on it. The server action refuses it too; this decides what is drawn.
-  const isOwnListing = Boolean(user && listing.ownerId && listing.ownerId === user.id);
+  // stars on it.
+  //
+  // Deliberately the same helper the server action calls, rather than deriving
+  // it from `access` — that counts admins as members everywhere, so an admin who
+  // genuinely is on the team would have been shown a form the action then
+  // refuses. Asking the identical question keeps the two in step.
+  const isOwnListing = await isOnListingTeam(user, listing.id);
+
+  // Only fetched for people who can act on it — a visitor has no business
+  // triggering this query, let alone seeing a proposal that is still private.
+  const changeRequests = canPost ? await getChangeRequests({ listingId: listing.id }) : [];
+  const pendingProposal = changeRequests.find((r) => r.status === 'PENDING') ?? null;
+  const lastDecision = changeRequests.find((r) => r.status !== 'PENDING') ?? null;
 
   const unlisted = listing.unlistedAt !== null;
 
@@ -224,6 +237,37 @@ export default async function ListingDetailPage({
         </div>
       </article>
 
+      {canPost && (
+        <ProposeChanges
+          listingId={listing.id}
+          category={listing.category}
+          defaults={{
+            name: listing.name,
+            developer: listing.developer,
+            description: listing.description,
+            url: listing.url,
+            secondaryUrl: listing.secondaryUrl,
+            pricing: listing.pricing,
+            price: listing.price,
+          }}
+          pending={
+            pendingProposal && {
+              authorUsername: pendingProposal.authorUsername,
+              createdAt: pendingProposal.createdAt,
+              note: pendingProposal.note,
+              diffs: pendingProposal.diffs,
+            }
+          }
+          lastDecision={
+            lastDecision && {
+              status: lastDecision.status,
+              decisionNote: lastDecision.decisionNote,
+              reviewedAt: lastDecision.reviewedAt,
+            }
+          }
+        />
+      )}
+
       {/* Above the reviews but in its own block: the developer's word and the
           community's verdict are different kinds of claim, and the page should
           not let them blur into one another. */}
@@ -255,8 +299,8 @@ export default async function ListingDetailPage({
         ) : isOwnListing ? (
           <div className="form-card" style={{ textAlign: 'center' }}>
             <p style={{ color: 'var(--text-secondary)' }}>
-              You are listed as this listing&rsquo;s developer, so you cannot review
-              it. Use <strong>Post announcement</strong> above to say something.
+              You are on this listing&rsquo;s team, so you cannot review it. Use{' '}
+              <strong>Post announcement</strong> above to say something.
             </p>
           </div>
         ) : reviewBanned ? (

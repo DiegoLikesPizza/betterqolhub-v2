@@ -1901,3 +1901,129 @@ select.mods-select { padding: 0.35rem 0.5rem; font-size: 0.85rem; width: auto; m
 .safety-text strong { color: var(--text-primary); }
 
 .modpack-page .safety-notice { margin-top: 1.5rem; }
+
+/* ---------------------------------------------------------------------------
+   Development teams, and the change requests they raise.
+   --------------------------------------------------------------------------- */
+
+.teams-panel { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.team-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--bg-panel);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+}
+.team-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.team-title { font-size: 1.3rem; }
+.team-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+.team-add-form { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.team-add-form .form-input { flex: 1; min-width: 12rem; padding: 0.45rem 0.6rem; font-size: 0.9rem; }
+.team-add-form .form-alert { flex-basis: 100%; }
+
+/* --- change request queue ------------------------------------------------- */
+
+.cr-queue { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.cr-badge {
+  margin-left: 0.6rem;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--bg-void);
+  background: var(--gold);
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.cr-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--bg-panel);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+}
+.cr-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.cr-title { font-size: 1.2rem; }
+.cr-note {
+  padding: 0.6rem 0.9rem;
+  color: var(--text-lore);
+  font-style: italic;
+  background: var(--bg-slot);
+  border-left: 3px solid var(--frame-bright);
+}
+.cr-table td { vertical-align: top; }
+.cr-field { font-family: var(--font-display); white-space: nowrap; }
+/* Old value muted and struck, new value in the accent: the direction of the
+   change should be readable without reading the column headers. */
+.cr-before { color: var(--text-secondary); text-decoration: line-through; }
+.cr-after { color: var(--safe); }
+.cr-actions { display: flex; gap: 0.6rem; justify-content: flex-end; flex-wrap: wrap; }
+
+.cr-history { border-top: 1px solid var(--frame); padding-top: 0.75rem; }
+.cr-history-body { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
+.cr-decided {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.88rem;
+}
+.cr-note-inline { color: var(--text-lore); font-style: italic; }
+
+/* --- the team-facing box on a listing page -------------------------------- */
+
+.propose-box {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--bg-panel);
+  border: 2px solid var(--frame-bright);
+  border-radius: 2px;
+}
+.propose-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.propose-title { font-size: 1.15rem; color: var(--gold); }
+.propose-sub { color: var(--text-secondary); font-size: 0.88rem; max-width: 46ch; }
+
+.propose-pending,
+.propose-rejected {
+  padding: 0.75rem 1rem;
+  font-size: 0.88rem;
+  border-radius: 2px;
+}
+.propose-pending {
+  color: var(--text-lore);
+  background: rgba(255, 170, 0, 0.07);
+  border: 1px solid rgba(255, 170, 0, 0.3);
+}
+.propose-rejected {
+  color: var(--text-lore);
+  background: rgba(255, 85, 85, 0.07);
+  border: 1px solid rgba(255, 85, 85, 0.3);
+}
+.propose-diff { list-style: none; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.propose-field { font-family: var(--font-display); color: var(--text-primary); }
+
+@media (max-width: 640px) {
+  .team-head, .cr-head, .propose-head { flex-direction: column; }
+  .cr-actions { justify-content: stretch; }
+}

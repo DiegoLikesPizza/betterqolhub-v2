@@ -1,5 +1,4 @@
 import { auth } from '@/auth';
-import { prisma } from '@/lib/prisma';
 import type { Role } from '@prisma/client';
 
 export type SessionUser = {
@@ -47,24 +46,7 @@ export async function requireUser(): Promise<SessionUser> {
   return user;
 }
 
-/**
- * Throws unless the caller may publish on this listing: its assigned owner, or
- * an admin.
- *
- * Per listing rather than per role, so being the developer of one client grants
- * nothing anywhere else. The owner is read from the database rather than from
- * anything the client sent, so a forged form field cannot grant it.
- */
-export async function requireListingOwner(listingId: string): Promise<SessionUser> {
-  const user = await requireUser();
-  if (user.role === 'ADMIN') return user;
-
-  const listing = await prisma.listing.findUnique({
-    where: { id: listingId },
-    select: { ownerId: true },
-  });
-  if (!listing || listing.ownerId !== user.id) {
-    throw new Error('Forbidden: you are not the developer of that listing.');
-  }
-  return user;
-}
+// Listing-level permissions moved to src/lib/team-access.ts when ownership went
+// from one person to a team. They are kept apart from this file because they ask
+// a different question — this file answers "who is signed in", that one answers
+// "what may they do here".

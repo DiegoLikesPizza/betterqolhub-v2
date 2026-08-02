@@ -13,7 +13,7 @@ import {
   pricingHasPrice,
 } from '@/lib/pricing';
 import EditListingDialog from './EditListingDialog';
-import SetOwnerDialog from './SetOwnerDialog';
+import SetTeamDialog, { type TeamOption } from './SetTeamDialog';
 import UnlistDialog from './UnlistDialog';
 import RowMenu from './RowMenu';
 import Pager, { pageSlice, pageCount } from './Pager';
@@ -31,7 +31,8 @@ type Row = {
   secondaryUrl: string | null;
   pricing: string | null;
   price: string | null;
-  ownerUsername: string | null;
+  teamId: string | null;
+  teamName: string | null;
   unlistedAt: string | null;
   unlistedReason: string | null;
 };
@@ -41,6 +42,8 @@ type Row = {
  * completeness rather than matching a state, so they are handled separately.
  */
 const PRICING_FILTER_SPECIALS = new Set(['ALL', 'UNSET', 'NO_PRICE']);
+
+type DialogKind = 'edit' | 'team' | 'unlist';
 
 type SortKey = 'newest' | 'oldest' | 'name' | 'rating-desc' | 'rating-asc' | 'reviews';
 
@@ -53,7 +56,13 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: 'reviews', label: 'Most reviewed' },
 ];
 
-export default function ListingsTable({ listings }: { listings: Row[] }) {
+export default function ListingsTable({
+  listings,
+  teams,
+}: {
+  listings: Row[];
+  teams: TeamOption[];
+}) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('ALL');
   const [status, setStatus] = useState('ALL');
@@ -203,7 +212,7 @@ export default function ListingsTable({ listings }: { listings: Row[] }) {
               </thead>
               <tbody>
                 {rows.map((listing) => (
-                  <ListingRow key={listing.id} listing={listing} />
+                  <ListingRow key={listing.id} listing={listing} teams={teams} />
                 ))}
               </tbody>
             </table>
@@ -215,21 +224,20 @@ export default function ListingsTable({ listings }: { listings: Row[] }) {
   );
 }
 
-function ListingRow({ listing }: { listing: Row }) {
+function ListingRow({ listing, teams }: { listing: Row; teams: TeamOption[] }) {
   const [pending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Which dialog the row's menu opened, if any. Held here rather than in the
   // dialogs so they survive the menu closing. The counter makes every request a
   // new value — see useControlledDialog for why a boolean is not enough.
-  const [dialog, setDialog] = useState<{ kind: 'edit' | 'owner' | 'unlist'; n: number } | null>(null);
+  const [dialog, setDialog] = useState<{ kind: DialogKind; n: number } | null>(null);
   const openDialog = useCallback(
-    (kind: 'edit' | 'owner' | 'unlist') => setDialog((d) => ({ kind, n: (d?.n ?? 0) + 1 })),
+    (kind: DialogKind) => setDialog((d) => ({ kind, n: (d?.n ?? 0) + 1 })),
     []
   );
   const closeDialog = useCallback(() => setDialog(null), []);
-  const tokenFor = (kind: 'edit' | 'owner' | 'unlist') =>
-    dialog?.kind === kind ? dialog.n : null;
+  const tokenFor = (kind: DialogKind) => (dialog?.kind === kind ? dialog.n : null);
 
   function run(fn: () => Promise<unknown>) {
     setError(null);
@@ -311,8 +319,8 @@ function ListingRow({ listing }: { listing: Row }) {
             items={[
               { label: 'Edit', onSelect: () => openDialog('edit') },
               {
-                label: listing.ownerUsername ? `Owner: ${listing.ownerUsername}` : 'Set owner',
-                onSelect: () => openDialog('owner'),
+                label: listing.teamName ? `Team: ${listing.teamName}` : 'Assign team',
+                onSelect: () => openDialog('team'),
               },
               {
                 label: listing.unlistedAt ? 'Unlisted — put back' : 'Unlist',
@@ -339,11 +347,12 @@ function ListingRow({ listing }: { listing: Row }) {
           openToken={tokenFor('edit')}
           onClose={closeDialog}
         />
-        <SetOwnerDialog
+        <SetTeamDialog
           listingId={listing.id}
           listingName={listing.name}
-          ownerUsername={listing.ownerUsername}
-          openToken={tokenFor('owner')}
+          teamId={listing.teamId}
+          teams={teams}
+          openToken={tokenFor('team')}
           onClose={closeDialog}
         />
         <UnlistDialog

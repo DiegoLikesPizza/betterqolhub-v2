@@ -15,6 +15,7 @@ const TABS = [
   { href: '/admin/traffic', label: 'Traffic' },
   { href: '/admin/listings', label: 'Listings' },
   { href: '/admin/modpacks', label: 'Modpacks' },
+  { href: '/admin/teams', label: 'Teams' },
   { href: '/admin/members', label: 'Members' },
   { href: '/admin/reviews', label: 'Reviews' },
 ] as const;

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import { currentUser, requireUser, requireListingOwner } from '@/lib/authz';
+import { currentUser, requireUser } from '@/lib/authz';
+import { requireListingTeam, isOnListingTeam } from '@/lib/team-access';
 import { MAX_ANNOUNCEMENT_LENGTH } from '@/lib/announcements';
 import { isValidRating, MAX_BODY_LENGTH } from '@/lib/reviews';
 import { notifyReview } from '@/lib/discord-bot';
@@ -81,18 +82,18 @@ export async function submitReview(
   // would throw a less helpful error.
   const listing = await prisma.listing.findUnique({
     where: { id: listingId },
-    select: { id: true, name: true, ownerId: true },
+    select: { id: true, name: true },
   });
   if (!listing) {
     return { ok: false, message: 'That listing no longer exists.' };
   }
   // A developer rating their own product is not a review. Enforced here rather
   // than only by hiding the form, since this is a POST endpoint anyone can call
-  // — and ownership can be granted after someone has already loaded the page.
-  if (listing.ownerId && listing.ownerId === user.id) {
+  // — and someone can join the team after already loading the page.
+  if (await isOnListingTeam(user, listing.id)) {
     return {
       ok: false,
-      message: 'You are this listing’s developer, so you cannot review it.',
+      message: 'You are on this listing’s team, so you cannot review it.',
     };
   }
 
@@ -177,9 +178,9 @@ export async function postAnnouncement(
 
   let author;
   try {
-    author = await requireListingOwner(listingId);
+    author = await requireListingTeam(listingId);
   } catch {
-    return { ok: false, message: 'Only this listing’s developer can post here.' };
+    return { ok: false, message: 'Only this listing’s team can post here.' };
   }
 
   const body = String(formData.get('body') ?? '').trim();
@@ -214,9 +215,9 @@ export async function deleteAnnouncement(announcementId: string) {
   if (!announcement) return;
 
   // Authorised against the listing the announcement belongs to, not against the
-  // author: an owner may remove a post left by a previous owner, and an admin
-  // may remove any.
-  await requireListingOwner(announcement.listingId);
+  // author: a team may remove a post left by a member who has since left, and an
+  // admin may remove any.
+  await requireListingTeam(announcement.listingId);
 
   await prisma.announcement.delete({ where: { id: announcementId } });
 

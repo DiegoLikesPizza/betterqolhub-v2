@@ -1,11 +1,12 @@
 import { getAdminListings } from '../../queries';
+import { getTeams } from '@/lib/team-queries';
 import AddListingDialog from '../../AddListingDialog';
 import ListingsTable from '../../ListingsTable';
 
 export const revalidate = 0;
 
 export default async function AdminListingsPage() {
-  const listings = await getAdminListings();
+  const [listings, teams] = await Promise.all([getAdminListings(), getTeams()]);
 
   return (
     <section className="admin-section">
@@ -18,6 +19,11 @@ export default async function AdminListingsPage() {
           ...l,
           createdAt: l.createdAt.toISOString(),
           unlistedAt: l.unlistedAt?.toISOString() ?? null,
+        }))}
+        teams={teams.map((t) => ({
+          id: t.id,
+          name: t.name,
+          memberCount: t.members.length,
         }))}
       />
     </section>

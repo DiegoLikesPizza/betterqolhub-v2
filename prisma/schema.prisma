@@ -169,12 +169,16 @@ model User {
   discordLink   DiscordLink?
   passwordReset PasswordReset?
 
-  /// Listings this user is the verified developer of. Granted by an admin, so
-  /// this is not a role: a user can own one listing and be an ordinary member
-  /// everywhere else.
-  ownedListings Listing[]      @relation("ListingOwner")
   announcements Announcement[]
   follows       Follow[]
+
+  /// Teams this user develops with. Granted by an admin or by a team lead, so
+  /// this is not a role: a user can lead one team and be an ordinary member
+  /// everywhere else.
+  teams TeamMember[]
+
+  changeRequests         ListingChangeRequest[] @relation("ChangeRequestAuthor")
+  reviewedChangeRequests ListingChangeRequest[] @relation("ChangeRequestReviewer")
 }
 
 /// A user following a listing, so its announcements reach them.
@@ -227,6 +231,105 @@ model DiscordLink {
   createdAt DateTime @default(now())
 }
 
+/// Which of a team's members may do what.
+///
+/// Two roles rather than per-member permission flags: every check in the code
+/// stays a single comparison, and the UI stays a dropdown. A third role can be
+/// added later without touching any existing row, whereas splitting a flag set
+/// back apart could not be done without deciding what every current member meant.
+enum TeamRole {
+  LEAD
+  MEMBER
+}
+
+/// A development team.
+///
+/// Replaced `Listing.ownerId`, which could name exactly one person. A team can
+/// hold several listings — one studio, several clients — and a solo developer is
+/// simply a team of one.
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  TeamMember[]
+  listings Listing[]
+}
+
+model TeamMember {
+  teamId String
+  userId String
+  role   TeamRole @default(MEMBER)
+
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Membership is a fact about a pair, so the pair is the key: joining twice is
+  /// the same as joining once, and the database says so.
+  @@id([teamId, userId])
+  /// "Which teams am I in" is asked on every listing page by a signed-in member.
+  @@index([userId])
+}
+
+/// Whether a proposed listing edit is still waiting, and how it ended.
+enum ChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// An edit a team proposes to its own listing, for an admin to approve.
+///
+/// Teams do not write to `Listing` directly. The site's whole claim is that
+/// somebody independent checked these entries, and that claim does not survive a
+/// developer being able to rewrite their own description after being marked
+/// trusted.
+///
+/// Stored as a full snapshot of the proposed listing rather than a diff. A diff
+/// recorded now and applied later silently resolves against whatever the row has
+/// become in the meantime; a snapshot is exactly what the admin was shown when
+/// they approved. The cost is that an admin edit made while a request is open is
+/// overwritten on approval — which is why the review screen shows the current
+/// value beside every proposed one.
+model ListingChangeRequest {
+  id        String  @id @default(cuid())
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  /// Cascade: an unattributed request is not something to act on.
+  authorId String
+  author   User   @relation("ChangeRequestAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  name         String
+  description  String
+  developer    String?
+  url          String
+  secondaryUrl String?
+  pricing      Pricing?
+  price        String?
+
+  /// The team's explanation of what changed and why.
+  note String?
+
+  status       ChangeRequestStatus @default(PENDING)
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?     @relation("ChangeRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  /// Why an admin rejected it. Shown to the team — unlike a moderation note,
+  /// this is feedback they are meant to act on.
+  decisionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// The queue reads pending first, and a listing shows its own history.
+  @@index([status, createdAt])
+  @@index([listingId])
+}
+
 model Listing {
   id          String   @id @default(cuid())
   name        String
@@ -252,17 +355,20 @@ model Listing {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  /// The account allowed to post announcements on this listing.
+  /// The development team behind this listing, or null while nobody claims it.
   ///
-  /// Deliberately a relation rather than a Role: ownership is per listing, so a
-  /// global role would grant it everywhere. Assigned by an admin only — the
-  /// `developer` field above is free text an admin typed and proves nothing, so
-  /// it cannot be used to decide who may publish here.
+  /// Replaced a single `ownerId`. Deliberately a relation rather than a Role:
+  /// membership is per team, so a global role would grant it everywhere.
+  /// Which team a listing belongs to is set by an admin only — the `developer`
+  /// field above is free text an admin typed and proves nothing, so it cannot be
+  /// used to decide who may publish here.
   ///
-  /// SetNull rather than Cascade: deleting the developer's account must not
-  /// take the listing down with it.
-  ownerId String?
-  owner   User?   @relation("ListingOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  /// SetNull rather than Cascade: deleting a team must not take its listings
+  /// down with it.
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  changeRequests ListingChangeRequest[]
 
   /// When an admin pulled this listing from the public catalogue, or null while
   /// it is listed normally.
@@ -283,7 +389,7 @@ model Listing {
   followers     Follow[]
 
   @@index([category])
-  @@index([ownerId])
+  @@index([teamId])
 }
 
 /// A note published by a listing's verified owner — a release, an outage, a
