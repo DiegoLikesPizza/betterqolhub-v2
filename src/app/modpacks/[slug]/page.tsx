@@ -7,6 +7,7 @@ import { SITE_URL } from '@/lib/site';
 import { recordPageHitFor, PAGE_KEYS } from '@/lib/stats';
 import { getModpackBySlug, getPublishedModpacks } from '@/lib/modpacks';
 import { FILE_KINDS, modrinthUrl, formatBytes, splitAccent } from '@/lib/modpack';
+import SafetyNotice from '@/app/SafetyNotice';
 
 export const revalidate = 0;
 
@@ -91,6 +92,8 @@ export default async function ModpackPage({ params }: { params: Promise<{ slug: 
           );
         })}
       </section>
+
+      <SafetyNotice variant="modpack" />
 
       {pack.files.length > 1 && (
         <p className="pack-note">

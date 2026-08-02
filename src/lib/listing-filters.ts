@@ -39,7 +39,17 @@ export const SORTS = [
 
 export type SortKey = (typeof SORTS)[number]['key'];
 
-export const DEFAULT_SORT: SortKey = 'newest';
+export const DEFAULT_SORT: SortKey = 'rating';
+
+/**
+ * How many reviews a listing needs before its average is treated as a ranking.
+ *
+ * Without a floor, "highest rated" is trivially gamed: one 5-star review would
+ * outrank a listing holding 4.9 across fifty. Below the floor a listing is not
+ * demoted for being *bad* — it is set aside for not being *known yet*, and still
+ * sorts among its peers by rating.
+ */
+export const RATING_CONFIDENCE_MIN = 3;
 
 function isSortKey(value: unknown): value is SortKey {
   return typeof value === 'string' && SORTS.some((s) => s.key === value);
@@ -192,17 +202,27 @@ export function sortListings<T extends FilterableListing>(
   listings: T[],
   sort: SortKey
 ): T[] {
-  // Unrated listings sort last under "highest rated": no reviews is missing
-  // data, not a zero score, and ranking them beneath 1-star entries would read
-  // as a judgement nobody made.
-  const rank = (r: RatingSummary) => (r.average === null ? -Infinity : r.average);
+  // Thinly reviewed listings sort after well-reviewed ones under "highest
+  // rated", and unrated ones last of all. No reviews is missing data, not a zero
+  // score, and ranking those beneath 1-star entries would read as a judgement
+  // nobody made — but neither should a single 5-star review top the catalogue.
+  // Within each tier the average still decides.
+  const tier = (r: RatingSummary) =>
+    r.average === null ? 0 : r.count >= RATING_CONFIDENCE_MIN ? 2 : 1;
+  const rank = (r: RatingSummary) => r.average ?? 0;
 
   return [...listings].sort((a, b) => {
     switch (sort) {
       case 'name':
         return a.name.localeCompare(b.name);
       case 'rating':
-        return rank(b.rating) - rank(a.rating);
+        return (
+          tier(b.rating) - tier(a.rating) ||
+          rank(b.rating) - rank(a.rating) ||
+          // A tie on both is broken by review count, so the better-evidenced of
+          // two equally rated listings comes first.
+          b.rating.count - a.rating.count
+        );
       case 'reviews':
         return b.rating.count - a.rating.count;
       default:

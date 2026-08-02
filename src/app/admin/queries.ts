@@ -42,6 +42,8 @@ export type AdminMember = {
   discordUsername: string | null;
   discordLinkedAt: Date | null;
   discordLinkedByAdmin: boolean;
+  reviewBannedAt: Date | null;
+  reviewBanReason: string | null;
 };
 
 export type AdminReview = {
@@ -190,6 +192,8 @@ export async function getAdminMembers(): Promise<AdminMember[]> {
       discordUsername: true,
       discordLinkedAt: true,
       discordLinkedByAdmin: true,
+      reviewBannedAt: true,
+      reviewBanReason: true,
       _count: { select: { reviews: true } },
     },
   });
@@ -203,6 +207,8 @@ export async function getAdminMembers(): Promise<AdminMember[]> {
     discordUsername: u.discordUsername,
     discordLinkedAt: u.discordLinkedAt,
     discordLinkedByAdmin: u.discordLinkedByAdmin,
+    reviewBannedAt: u.reviewBannedAt,
+    reviewBanReason: u.reviewBanReason,
   }));
 }
 

@@ -143,6 +143,20 @@ model User {
   /// apply to a first change.
   usernameChangedAt DateTime?
 
+  /// When an admin barred this account from posting reviews, or null.
+  ///
+  /// A timestamp rather than a boolean, for the same reason `Listing.unlistedAt`
+  /// is one: "since when" is the first thing anyone reviewing a ban asks.
+  ///
+  /// Bans are forward-looking only. Reviews the account already posted stay
+  /// visible and keep counting towards ratings — they were written before the
+  /// abuse and deleting them would silently rewrite listings' scores. Removing
+  /// an individual bad review is a separate, deliberate act.
+  reviewBannedAt DateTime?
+  /// Admin-facing note on why. Never shown to the banned user or the public: it
+  /// is moderation shorthand, not a published accusation.
+  reviewBanReason String?
+
   /// When this user last opened the notification centre.
   ///
   /// The whole of "read state" is this one column. Notifications are derived at

@@ -18,6 +18,7 @@ import { pricingBadge, pricingColor } from '@/lib/pricing';
 import { ANNOUNCEMENT_HISTORY_LIMIT } from '@/lib/announcements';
 import { UNLISTED_NOTICE } from '@/lib/moderation';
 import ReviewForm from './ReviewForm';
+import SafetyNotice from '@/app/SafetyNotice';
 import ReviewList from './ReviewList';
 import Announcements from './Announcements';
 import FollowButton from './FollowButton';
@@ -117,7 +118,10 @@ export default async function ListingDetailPage({
   // it to, so signed-out visitors never trigger a call to the bot.
   const [account, customEmoji, follow] = user
     ? await Promise.all([
-        prisma.user.findUnique({ where: { id: user.id }, select: { discordId: true } }),
+        prisma.user.findUnique({
+          where: { id: user.id },
+          select: { discordId: true, reviewBannedAt: true },
+        }),
         fetchGuildEmojis(),
         prisma.follow.findUnique({
           where: { userId_listingId: { userId: user.id, listingId: listing.id } },
@@ -126,6 +130,7 @@ export default async function ListingDetailPage({
       ])
     : [null, [], null];
   const discordLinked = Boolean(account?.discordId);
+  const reviewBanned = Boolean(account?.reviewBannedAt);
 
   // The composer is offered to the listing's owner and to admins. The server
   // action re-derives this from the database, so this only decides what is
@@ -218,6 +223,8 @@ export default async function ListingDetailPage({
             </a>
           )}
         </div>
+
+        <SafetyNotice />
       </article>
 
       {/* Above the reviews but in its own block: the developer's word and the
@@ -253,6 +260,16 @@ export default async function ListingDetailPage({
             <p style={{ color: 'var(--text-secondary)' }}>
               You are listed as this listing&rsquo;s developer, so you cannot review
               it. Use <strong>Post announcement</strong> above to say something.
+            </p>
+          </div>
+        ) : reviewBanned ? (
+          // Checked before the Discord prompt: telling a banned account to go
+          // link Discord would send them through a setup flow that changes
+          // nothing. The reason is not shown — it is an admin note.
+          <div className="form-card" style={{ textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-secondary)' }}>
+              Your account cannot post reviews. If you think that is a mistake,
+              reach out to an admin on Discord.
             </p>
           </div>
         ) : !discordLinked ? (

@@ -15,7 +15,12 @@ import {
 } from '@/lib/pricing';
 import { requireAdmin } from '@/lib/authz';
 import { MAX_UNLIST_REASON_LENGTH } from '@/lib/moderation';
-import { DISCORD_ID_PATTERN, MAX_DISCORD_USERNAME_LENGTH } from '@/lib/account';
+import {
+  DISCORD_ID_PATTERN,
+  MAX_DISCORD_USERNAME_LENGTH,
+  MAX_REVIEW_BAN_REASON_LENGTH,
+  isValidUsername,
+} from '@/lib/account';
 import { notifyListing } from '@/lib/discord-bot';
 
 export type AddListingState = {
@@ -384,6 +389,122 @@ export async function setUserDiscord(
 
   revalidatePath('/admin', 'layout');
   return { ok: true, message: 'Linked. Marked as set by an admin, not verified.' };
+}
+
+export type ReviewBanState = { ok?: boolean; message?: string } | undefined;
+
+/**
+ * Bars a member from posting reviews, or lifts the ban.
+ *
+ * Forward-looking only: reviews the account already posted are left alone. They
+ * were written before whatever caused the ban, and deleting them would rewrite
+ * the affected listings' ratings as a side effect of a moderation decision that
+ * was about the person, not about those reviews. Removing an individual bad
+ * review stays a separate, deliberate act.
+ */
+export async function setReviewBan(
+  _prevState: ReviewBanState,
+  formData: FormData
+): Promise<ReviewBanState> {
+  const admin = await requireAdmin().catch(() => null);
+  if (!admin) return { ok: false, message: 'Admin access required.' };
+
+  const userId = String(formData.get('userId') ?? '').trim();
+  if (!userId) return { ok: false, message: 'Missing member.' };
+
+  const banned = formData.get('banned') === 'on';
+  const reason = String(formData.get('reason') ?? '').trim();
+
+  if (banned && reason.length > MAX_REVIEW_BAN_REASON_LENGTH) {
+    return {
+      ok: false,
+      message: `Reason must be ${MAX_REVIEW_BAN_REASON_LENGTH} characters or fewer.`,
+    };
+  }
+  // Banning yourself would be odd rather than dangerous, but it is never what
+  // was meant — unlike self-demotion it is trivially reversible, so this is a
+  // guard against a misclick, not a lockout.
+  if (banned && userId === admin.id) {
+    return { ok: false, message: 'You cannot review-ban your own account.' };
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { username: true },
+  });
+  if (!target) return { ok: false, message: 'That member no longer exists.' };
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      reviewBannedAt: banned ? new Date() : null,
+      reviewBanReason: banned ? reason || null : null,
+    },
+  });
+
+  revalidatePath('/admin', 'layout');
+  // Every listing page decides what to draw from this, and there is no cheap way
+  // to know which ones the member was looking at.
+  revalidatePath('/listings', 'layout');
+
+  return {
+    ok: true,
+    message: banned
+      ? `${target.username} can no longer post reviews.`
+      : `${target.username} can post reviews again.`,
+  };
+}
+
+export type RenameUserState = { ok?: boolean; message?: string } | undefined;
+
+/**
+ * Renames a member, bypassing the cooldown that applies to self-service changes.
+ *
+ * The cooldown exists to stop people churning identities; an admin renaming
+ * someone is the opposite situation — an offensive name, or an account whose
+ * owner has locked themselves out of the change. `usernameChangedAt` is left
+ * untouched so this neither starts nor resets the member's own cooldown.
+ */
+export async function renameUser(
+  _prevState: RenameUserState,
+  formData: FormData
+): Promise<RenameUserState> {
+  const admin = await requireAdmin().catch(() => null);
+  if (!admin) return { ok: false, message: 'Admin access required.' };
+
+  const userId = String(formData.get('userId') ?? '').trim();
+  const username = String(formData.get('username') ?? '').trim();
+  if (!userId) return { ok: false, message: 'Missing member.' };
+
+  if (!isValidUsername(username)) {
+    return {
+      ok: false,
+      message: 'Usernames are 3–20 characters, letters, numbers and underscores only.',
+    };
+  }
+
+  const current = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { username: true },
+  });
+  if (!current) return { ok: false, message: 'That member no longer exists.' };
+  if (current.username === username) return { ok: true, message: 'Name unchanged.' };
+
+  try {
+    await prisma.user.update({ where: { id: userId }, data: { username } });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return { ok: false, message: `“${username}” is already taken.` };
+    }
+    console.error('[admin] failed to rename user', error);
+    return { ok: false, message: 'Could not rename that member.' };
+  }
+
+  revalidatePath('/admin', 'layout');
+  // The old name is printed next to every review the member has written.
+  revalidatePath('/listings', 'layout');
+
+  return { ok: true, message: `Renamed to ${username}.` };
 }
 
 export async function setUserRole(userId: string, makeAdmin: boolean) {

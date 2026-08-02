@@ -34,6 +34,13 @@ export function usernameAvailableAt(changedAt: Date | null): Date | null {
   return next > new Date() ? next : null;
 }
 
+/**
+ * Cap on the admin-facing note attached to a review ban. Long enough for "spam
+ * reviews on 6 listings, 12 Jul", short enough that nobody writes a case file
+ * into a table cell.
+ */
+export const MAX_REVIEW_BAN_REASON_LENGTH = 300;
+
 export function passwordProblem(password: string, confirm: string): string | null {
   if (password.length < MIN_PASSWORD_LENGTH) {
     return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;

@@ -17,6 +17,7 @@ export default async function AdminMembersPage() {
           ...m,
           createdAt: m.createdAt.toISOString(),
           discordLinkedAt: m.discordLinkedAt ? m.discordLinkedAt.toISOString() : null,
+          reviewBannedAt: m.reviewBannedAt ? m.reviewBannedAt.toISOString() : null,
         }))}
         viewerId={user?.id ?? ''}
       />

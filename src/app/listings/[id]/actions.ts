@@ -30,12 +30,22 @@ export async function submitReview(
   // tied to a verified Discord identity rather than a throwaway signup.
   const account = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { discordId: true },
+    select: { discordId: true, reviewBannedAt: true },
   });
   if (!account?.discordId) {
     return {
       ok: false,
       message: 'Link your Discord account in Settings before posting a review.',
+    };
+  }
+  // Checked here rather than only by hiding the form: this is a POST endpoint
+  // anyone can call, and a ban can land while someone already has the page open.
+  // The reason is deliberately not echoed back — it is a moderation note, not a
+  // published accusation.
+  if (account.reviewBannedAt) {
+    return {
+      ok: false,
+      message: 'Your account cannot post reviews. Contact an admin if you think that is wrong.',
     };
   }
 

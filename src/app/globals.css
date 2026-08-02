@@ -1112,6 +1112,13 @@ select.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; fo
   color: var(--text-secondary);
 }
 .role-admin { color: var(--gold); border-color: rgba(255, 170, 0, 0.4); background: rgba(255, 170, 0, 0.08); }
+.role-banned {
+  color: var(--danger);
+  border-color: rgba(255, 85, 85, 0.4);
+  background: rgba(255, 85, 85, 0.08);
+  margin-left: 0.35rem;
+  cursor: help;
+}
 
 /* Admin review feed ------------------------------------------------------ */
 .review-feed { display: flex; flex-direction: column; gap: 0.85rem; }
@@ -1857,3 +1864,40 @@ select.mods-select { padding: 0.35rem 0.5rem; font-size: 0.85rem; width: auto; m
   .pack-admin-head { flex-direction: column; }
   .form-row { flex-direction: column; gap: 0; }
 }
+
+/* ---------------------------------------------------------------------------
+   Download-safety notice. Sits next to outbound links, so it has to read as a
+   caveat rather than as an error the visitor caused — bordered and tinted, but
+   not the red of a failure.
+   --------------------------------------------------------------------------- */
+
+.safety-notice {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  margin-top: 1.5rem;
+  padding: 0.9rem 1rem;
+  background: rgba(255, 170, 0, 0.06);
+  border: 1px solid rgba(255, 170, 0, 0.35);
+  border-radius: 2px;
+}
+.safety-icon {
+  flex: none;
+  width: 1.4rem;
+  height: 1.4rem;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  color: var(--bg-void);
+  background: var(--gold);
+  border-radius: 2px;
+  line-height: 1;
+}
+.safety-text {
+  color: var(--text-lore);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.safety-text strong { color: var(--text-primary); }
+
+.modpack-page .safety-notice { margin-top: 1.5rem; }
