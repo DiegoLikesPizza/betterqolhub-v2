@@ -2067,3 +2067,64 @@ select.mods-select { padding: 0.35rem 0.5rem; font-size: 0.85rem; width: auto; m
   background: var(--gold);
   border-radius: 2px;
 }
+
+/* ---------------------------------------------------------------------------
+   Developer-written feature lists, rendered from a Markdown subset.
+   --------------------------------------------------------------------------- */
+
+.features {
+  margin-top: 1.5rem;
+  border: 1px solid var(--frame);
+  border-radius: 2px;
+  background: var(--bg-slot);
+}
+.features-summary {
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  list-style: none;
+}
+/* The marker is drawn by hand so it can sit on the right and rotate — the
+   default triangle cannot be styled consistently across browsers. */
+.features-summary::-webkit-details-marker { display: none; }
+.features-summary::after {
+  content: '▾';
+  float: right;
+  color: var(--text-secondary);
+  transition: transform 0.15s ease;
+}
+.features[open] .features-summary::after { transform: rotate(180deg); display: inline-block; }
+.features-summary:hover { color: var(--gold); }
+.features-body { padding: 0 1rem 1rem; }
+
+.markdown-body { color: var(--text-lore); font-size: 0.95rem; line-height: 1.6; }
+.markdown-body > * + * { margin-top: 0.75rem; }
+.md-heading {
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  font-size: 1.05rem;
+}
+.md-list { padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.markdown-body li { list-style: disc; }
+.markdown-body ol li { list-style: decimal; }
+.markdown-body strong { color: var(--text-primary); }
+.markdown-body code {
+  padding: 0.1rem 0.35rem;
+  font-size: 0.88em;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--frame);
+  border-radius: 2px;
+}
+.markdown-body a { color: var(--gold); text-decoration: underline; }
+.markdown-body a:hover { color: var(--gold-bright); }
+
+.features-input { min-height: 180px; font-family: var(--font-body); }
+.features-preview {
+  min-height: 180px;
+  padding: 0.75rem;
+  background: var(--bg-slot);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+}
+.form-hint-error { color: var(--danger); }

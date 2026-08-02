@@ -15,6 +15,9 @@ export type DashboardListing = {
   developer: string | null;
   url: string;
   secondaryUrl: string | null;
+  urlLabel: string | null;
+  secondaryUrlLabel: string | null;
+  features: string | null;
   pricing: string | null;
   price: string | null;
   /// The development team behind this listing, or null while unclaimed.
@@ -166,6 +169,9 @@ export async function getAdminListings(): Promise<DashboardListing[]> {
       developer: true,
       url: true,
       secondaryUrl: true,
+      urlLabel: true,
+      secondaryUrlLabel: true,
+      features: true,
       pricing: true,
       price: true,
       team: { select: { id: true, name: true } },

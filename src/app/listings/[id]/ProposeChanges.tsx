@@ -8,6 +8,8 @@ import {
 } from '@/app/admin/change-request-actions';
 import { MAX_CHANGE_NOTE_LENGTH, displayValue } from '@/lib/change-requests';
 import { PRICING, MAX_PRICE_LENGTH, categoryHasPricing, pricingHasPrice } from '@/lib/pricing';
+import { MAX_LINK_LABEL_LENGTH } from '@/lib/categories';
+import FeaturesField from '@/app/FeaturesField';
 import type { FieldDiff } from '@/lib/change-requests';
 
 export type ProposeDefaults = {
@@ -16,6 +18,9 @@ export type ProposeDefaults = {
   description: string;
   url: string;
   secondaryUrl: string | null;
+  urlLabel: string | null;
+  secondaryUrlLabel: string | null;
+  features: string | null;
   pricing: string | null;
   price: string | null;
 };
@@ -179,6 +184,21 @@ export default function ProposeChanges({
               defaultValue={defaults.url}
               required
             />
+            <input
+              id="pc-urlLabel"
+              name="urlLabel"
+              type="text"
+              className="form-input"
+              style={{ marginTop: '0.5rem' }}
+              maxLength={MAX_LINK_LABEL_LENGTH}
+              placeholder="Button text — leave empty to detect it"
+              defaultValue={defaults.urlLabel ?? ''}
+              aria-label="Primary button text"
+            />
+            <p className="form-hint">
+              Empty reads the label from the URL. Set it when the URL does not say
+              where it goes — your own domain redirecting to Discord, say.
+            </p>
           </div>
 
           <div className="form-group">
@@ -193,7 +213,20 @@ export default function ProposeChanges({
               className="form-input"
               defaultValue={defaults.secondaryUrl ?? ''}
             />
+            <input
+              id="pc-secondaryUrlLabel"
+              name="secondaryUrlLabel"
+              type="text"
+              className="form-input"
+              style={{ marginTop: '0.5rem' }}
+              maxLength={MAX_LINK_LABEL_LENGTH}
+              placeholder="Button text — leave empty to detect it"
+              defaultValue={defaults.secondaryUrlLabel ?? ''}
+              aria-label="Secondary button text"
+            />
           </div>
+
+          <FeaturesField id="pc-features" defaultValue={defaults.features ?? ''} />
 
           {showPricing && (
             <div className="form-group">

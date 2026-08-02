@@ -29,6 +29,9 @@ type Row = {
   developer: string | null;
   url: string;
   secondaryUrl: string | null;
+  urlLabel: string | null;
+  secondaryUrlLabel: string | null;
+  features: string | null;
   pricing: string | null;
   price: string | null;
   teamId: string | null;

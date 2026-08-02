@@ -11,7 +11,7 @@ import { getChangeRequests } from '@/lib/team-queries';
 import {
   categoryColor,
   categoryLabel,
-  linkLabel,
+  linkLabelFor,
 } from '@/lib/categories';
 import { summarise, stars, ratingColor } from '@/lib/reviews';
 import { fetchGuildEmojis } from '@/lib/discord-bot';
@@ -24,6 +24,7 @@ import ReviewList from './ReviewList';
 import Announcements from './Announcements';
 import FollowButton from './FollowButton';
 import ProposeChanges from './ProposeChanges';
+import { renderMarkdown } from '@/lib/markdown';
 
 export const revalidate = 0;
 
@@ -156,6 +157,9 @@ export default async function ListingDetailPage({
   const lastDecision = changeRequests.find((r) => r.status !== 'PENDING') ?? null;
 
   const unlisted = listing.unlistedAt !== null;
+  // Rendered once here rather than inside the markup, so the section can be
+  // skipped entirely when the list is empty or only whitespace.
+  const features = renderMarkdown(listing.features);
 
   return (
     <div className="container narrow-page">
@@ -222,7 +226,7 @@ export default async function ListingDetailPage({
             actual URL, so nothing about how it reads changes. */}
         <div className="tooltip-links">
           <a href={`/go/${listing.id}`} target="_blank" rel="noreferrer" className="btn btn-primary">
-            {linkLabel(listing.url)}
+            {linkLabelFor(listing.url, listing.urlLabel)}
           </a>
           {listing.secondaryUrl && (
             <a
@@ -231,10 +235,21 @@ export default async function ListingDetailPage({
               rel="noreferrer"
               className="btn btn-secondary"
             >
-              {linkLabel(listing.secondaryUrl)}
+              {linkLabelFor(listing.secondaryUrl, listing.secondaryUrlLabel)}
             </a>
           )}
         </div>
+
+        {/* Collapsed by default: a long list would otherwise push the reviews —
+            the part of the page that is not the vendor's own words — below the
+            fold. <details> rather than a modal, so it works without JavaScript,
+            behaves on a phone, and leaves the text in the document for search. */}
+        {features && (
+          <details className="features">
+            <summary className="features-summary">Features</summary>
+            <div className="markdown-body features-body">{features}</div>
+          </details>
+        )}
       </article>
 
       {canPost && (
@@ -247,6 +262,9 @@ export default async function ListingDetailPage({
             description: listing.description,
             url: listing.url,
             secondaryUrl: listing.secondaryUrl,
+            urlLabel: listing.urlLabel,
+            secondaryUrlLabel: listing.secondaryUrlLabel,
+            features: listing.features,
             pricing: listing.pricing,
             price: listing.price,
           }}

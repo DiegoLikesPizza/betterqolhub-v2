@@ -8,7 +8,7 @@ import {
   CATEGORIES,
   categoryLabel,
   categoryColor,
-  linkLabel,
+  linkLabelFor,
 } from '@/lib/categories';
 import { stars, ratingColor, type RatingSummary } from '@/lib/reviews';
 import { PRICING, pricingBadge, pricingColor } from '@/lib/pricing';
@@ -34,6 +34,8 @@ type Listing = {
   developer: string | null;
   url: string;
   secondaryUrl: string | null;
+  urlLabel: string | null;
+  secondaryUrlLabel: string | null;
   isTrusted: boolean;
   pricing: string | null;
   price: string | null;
@@ -291,7 +293,7 @@ function ListingCard({ listing }: { listing: Listing }) {
           the real URL, so hovering and reading the button is unchanged. */}
       <div className="tooltip-links">
         <a href={`/go/${listing.id}`} target="_blank" rel="noreferrer" className="btn btn-primary">
-          {linkLabel(listing.url)}
+          {linkLabelFor(listing.url, listing.urlLabel)}
         </a>
         {listing.secondaryUrl && (
           <a
@@ -300,7 +302,7 @@ function ListingCard({ listing }: { listing: Listing }) {
             rel="noreferrer"
             className="btn btn-secondary"
           >
-            {linkLabel(listing.secondaryUrl)}
+            {linkLabelFor(listing.secondaryUrl, listing.secondaryUrlLabel)}
           </a>
         )}
       </div>

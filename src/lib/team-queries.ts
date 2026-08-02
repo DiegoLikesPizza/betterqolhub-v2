@@ -82,6 +82,9 @@ const SNAPSHOT_FIELDS = {
   description: true,
   url: true,
   secondaryUrl: true,
+  urlLabel: true,
+  secondaryUrlLabel: true,
+  features: true,
   pricing: true,
   price: true,
 } as const;
@@ -92,6 +95,9 @@ function toSnapshot(row: {
   description: string;
   url: string;
   secondaryUrl: string | null;
+  urlLabel: string | null;
+  secondaryUrlLabel: string | null;
+  features: string | null;
   pricing: PricingKey | null;
   price: string | null;
 }): ChangeSnapshot {
@@ -101,6 +107,9 @@ function toSnapshot(row: {
     description: row.description,
     url: row.url,
     secondaryUrl: row.secondaryUrl,
+    urlLabel: row.urlLabel,
+    secondaryUrlLabel: row.secondaryUrlLabel,
+    features: row.features,
     pricing: row.pricing,
     price: row.price,
   };

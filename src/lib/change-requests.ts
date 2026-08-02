@@ -17,7 +17,10 @@ export const CHANGE_FIELDS = [
   { key: 'developer', label: 'Developer' },
   { key: 'description', label: 'Description' },
   { key: 'url', label: 'Primary link' },
+  { key: 'urlLabel', label: 'Primary button text' },
   { key: 'secondaryUrl', label: 'Secondary link' },
+  { key: 'secondaryUrlLabel', label: 'Secondary button text' },
+  { key: 'features', label: 'Feature list' },
   { key: 'pricing', label: 'Pricing' },
   { key: 'price', label: 'Price' },
 ] as const;
@@ -30,6 +33,11 @@ export type ChangeSnapshot = {
   description: string;
   url: string;
   secondaryUrl: string | null;
+  urlLabel: string | null;
+  secondaryUrlLabel: string | null;
+  /// Markdown. Compared and shown as plain text in the review table — an admin
+  /// deciding on a change needs to see what was written, not what it renders to.
+  features: string | null;
   /// A Pricing key, matching the enum the listing column uses.
   pricing: PricingKey | null;
   price: string | null;

@@ -19,6 +19,8 @@ import {
   type PricingKey,
 } from '@/lib/pricing';
 import { notifyListing, notifyChangeRequest } from '@/lib/discord-bot';
+import { MAX_LINK_LABEL_LENGTH } from '@/lib/categories';
+import { MAX_FEATURES_LENGTH } from '@/lib/markdown';
 
 export type ChangeRequestState = { ok?: boolean; message?: string } | undefined;
 
@@ -31,6 +33,9 @@ function readSnapshot(
   const url = String(formData.get('url') ?? '').trim();
   const developer = String(formData.get('developer') ?? '').trim();
   const secondaryUrl = String(formData.get('secondaryUrl') ?? '').trim();
+  const urlLabel = String(formData.get('urlLabel') ?? '').trim();
+  const secondaryUrlLabel = String(formData.get('secondaryUrlLabel') ?? '').trim();
+  const features = String(formData.get('features') ?? '').trim();
 
   if (!name || !description || !url) {
     return { error: 'Name, description and primary link are required.' };
@@ -48,6 +53,13 @@ function readSnapshot(
   // Coerced against the listing's *current* category, which teams cannot
   // propose changes to — so a proposal cannot smuggle in a price for a category
   // where pricing does not apply.
+  if (urlLabel.length > MAX_LINK_LABEL_LENGTH || secondaryUrlLabel.length > MAX_LINK_LABEL_LENGTH) {
+    return { error: `Button labels must be ${MAX_LINK_LABEL_LENGTH} characters or fewer.` };
+  }
+  if (features.length > MAX_FEATURES_LENGTH) {
+    return { error: `Feature list must be ${MAX_FEATURES_LENGTH} characters or fewer.` };
+  }
+
   const pricing = pricingForCategory(category, rawPricing ? (rawPricing as PricingKey) : null);
 
   return {
@@ -56,6 +68,9 @@ function readSnapshot(
     url,
     developer: developer || null,
     secondaryUrl: secondaryUrl || null,
+    urlLabel: urlLabel || null,
+    secondaryUrlLabel: secondaryUrl ? secondaryUrlLabel || null : null,
+    features: features || null,
     pricing,
     price: priceForPricing(pricing, rawPrice),
   };
@@ -152,6 +167,9 @@ export async function approveChangeRequest(
         developer: request.developer,
         url: request.url,
         secondaryUrl: request.secondaryUrl,
+        urlLabel: request.urlLabel,
+        secondaryUrlLabel: request.secondaryUrlLabel,
+        features: request.features,
         pricing: request.pricing,
         price: request.price,
       },

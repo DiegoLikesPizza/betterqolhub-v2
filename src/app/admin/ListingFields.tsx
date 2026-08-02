@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { CATEGORIES } from '@/lib/categories';
+import { CATEGORIES, MAX_LINK_LABEL_LENGTH } from '@/lib/categories';
+import FeaturesField from '@/app/FeaturesField';
 import {
   PRICING,
   MAX_PRICE_LENGTH,
@@ -16,6 +17,9 @@ export type ListingDefaults = {
   url?: string;
   developer?: string | null;
   secondaryUrl?: string | null;
+  urlLabel?: string | null;
+  secondaryUrlLabel?: string | null;
+  features?: string | null;
   isTrusted?: boolean;
   pricing?: string | null;
   price?: string | null;
@@ -144,6 +148,11 @@ export default function ListingFields({ defaults = {} }: { defaults?: ListingDef
           defaultValue={defaults.url ?? ''}
           required
         />
+        <LinkLabelField
+          id={`${idPrefix}-urlLabel`}
+          name="urlLabel"
+          defaultValue={defaults.urlLabel ?? ''}
+        />
       </div>
 
       <div className="form-group">
@@ -173,7 +182,17 @@ export default function ListingFields({ defaults = {} }: { defaults?: ListingDef
           className="form-input"
           defaultValue={defaults.secondaryUrl ?? ''}
         />
+        <LinkLabelField
+          id={`${idPrefix}-secondaryUrlLabel`}
+          name="secondaryUrlLabel"
+          defaultValue={defaults.secondaryUrlLabel ?? ''}
+        />
       </div>
+
+      <FeaturesField
+        id={`${idPrefix}-features`}
+        defaultValue={defaults.features ?? ''}
+      />
 
       <div className="form-group">
         <label className="form-checkbox">
@@ -181,6 +200,44 @@ export default function ListingFields({ defaults = {} }: { defaults?: ListingDef
           <span>Mark as trusted</span>
         </label>
       </div>
+    </>
+  );
+}
+
+/**
+ * The optional override for what a link button says.
+ *
+ * Sits under the URL it belongs to rather than in a fields-of-its-own section:
+ * the two are one decision, and separating them is how you end up with a label
+ * pointing at the wrong link.
+ */
+function LinkLabelField({
+  id,
+  name,
+  defaultValue,
+}: {
+  id: string;
+  name: string;
+  defaultValue: string;
+}) {
+  return (
+    <>
+      <input
+        id={id}
+        name={name}
+        type="text"
+        className="form-input"
+        style={{ marginTop: '0.5rem' }}
+        maxLength={MAX_LINK_LABEL_LENGTH}
+        placeholder="Button text — leave empty to detect it"
+        defaultValue={defaultValue}
+        aria-label="Custom button label"
+      />
+      <p className="form-hint">
+        Empty means the label is read from the URL (&ldquo;Join Discord&rdquo; for a
+        discord.gg link, otherwise &ldquo;Visit&rdquo;). Set it when the URL does not
+        say where it goes — a link to your own domain that redirects to Discord, say.
+      </p>
     </>
   );
 }

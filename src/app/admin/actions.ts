@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { Prisma } from '@prisma/client';
 import { signOut } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { isCategoryKey } from '@/lib/categories';
+import { isCategoryKey, MAX_LINK_LABEL_LENGTH } from '@/lib/categories';
 import {
   isPricingKey,
   pricingForCategory,
@@ -14,6 +14,7 @@ import {
   type PricingKey,
 } from '@/lib/pricing';
 import { requireAdmin } from '@/lib/authz';
+import { MAX_FEATURES_LENGTH } from '@/lib/markdown';
 import { MAX_UNLIST_REASON_LENGTH } from '@/lib/moderation';
 import {
   DISCORD_ID_PATTERN,
@@ -35,6 +36,9 @@ type ListingInput = {
   url: string;
   developer: string | null;
   secondaryUrl: string | null;
+  urlLabel: string | null;
+  secondaryUrlLabel: string | null;
+  features: string | null;
   isTrusted: boolean;
   pricing: PricingKey | null;
   price: string | null;
@@ -48,6 +52,9 @@ function readListingForm(formData: FormData): ListingInput | { error: string } {
   const url = String(formData.get('url') ?? '').trim();
   const developer = String(formData.get('developer') ?? '').trim();
   const secondaryUrl = String(formData.get('secondaryUrl') ?? '').trim();
+  const urlLabel = String(formData.get('urlLabel') ?? '').trim();
+  const secondaryUrlLabel = String(formData.get('secondaryUrlLabel') ?? '').trim();
+  const features = String(formData.get('features') ?? '').trim();
 
   if (!name || !description || !url) {
     return { error: 'Name, description and primary link are required.' };
@@ -72,6 +79,13 @@ function readListingForm(formData: FormData): ListingInput | { error: string } {
     return { error: `Price must be ${MAX_PRICE_LENGTH} characters or fewer.` };
   }
 
+  if (urlLabel.length > MAX_LINK_LABEL_LENGTH || secondaryUrlLabel.length > MAX_LINK_LABEL_LENGTH) {
+    return { error: `Button labels must be ${MAX_LINK_LABEL_LENGTH} characters or fewer.` };
+  }
+  if (features.length > MAX_FEATURES_LENGTH) {
+    return { error: `Feature list must be ${MAX_FEATURES_LENGTH} characters or fewer.` };
+  }
+
   const pricing = pricingForCategory(category, rawPricing ? (rawPricing as PricingKey) : null);
 
   return {
@@ -81,6 +95,10 @@ function readListingForm(formData: FormData): ListingInput | { error: string } {
     url,
     developer: developer || null,
     secondaryUrl: secondaryUrl || null,
+    // A label without a link would be a button pointing nowhere.
+    urlLabel: urlLabel || null,
+    secondaryUrlLabel: secondaryUrl ? secondaryUrlLabel || null : null,
+    features: features || null,
     // An unchecked checkbox is simply absent from FormData.
     isTrusted: formData.get('isTrusted') === 'on',
     // Coerced by category, so recategorising a client into a shop drops its

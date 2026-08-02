@@ -37,6 +37,26 @@ export function categoryColor(key: string): string {
 
 // Listings link out to a Discord server or website (no direct downloads), so
 // the button label adapts to where the link points.
+/**
+ * Cap on a hand-written link label. Long enough for "Join the Discord", short
+ * enough that it cannot stretch the button past the layout.
+ */
+export const MAX_LINK_LABEL_LENGTH = 24;
+
+/**
+ * What a link button says: the label the developers chose, or one derived from
+ * the URL when they did not.
+ *
+ * The override exists because detection reads the hostname, and that is only
+ * right while people link the service directly. A developer pointing at
+ * their own domain — nebulaclient.net/discord — gets "Visit", which is true and
+ * useless.
+ */
+export function linkLabelFor(url: string, custom: string | null | undefined): string {
+  const trimmed = custom?.trim();
+  return trimmed ? trimmed.slice(0, MAX_LINK_LABEL_LENGTH) : linkLabel(url);
+}
+
 export function linkLabel(url: string): string {
   try {
     const host = new URL(url).hostname.toLowerCase();
