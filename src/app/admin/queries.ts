@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { CATEGORIES } from '@/lib/categories';
 import { summarise, type RatingSummary } from '@/lib/reviews';
+import { isDownloadKey } from '@/lib/stats';
 
 export type DashboardListing = {
   id: string;
@@ -320,8 +321,13 @@ export async function getStatsData(): Promise<StatsData> {
     pageTotals.set(row.path, (pageTotals.get(row.path) ?? 0) + row.hits);
   }
 
-  const downloads =
-    (pageTotals.get('download:mrpack') ?? 0) + (pageTotals.get('download:zip') ?? 0);
+  // Every download key, not the two the single hardcoded pack used to write:
+  // per-pack keys look like `download:<slug>:<kind>`, and the old rows are still
+  // in the table, so both shapes have to count.
+  let downloads = 0;
+  for (const [path, hits] of pageTotals) {
+    if (isDownloadKey(path)) downloads += hits;
+  }
 
   const daily = [...byDay.entries()].map(([day, v]) => ({ day, ...v }));
 

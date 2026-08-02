@@ -1,72 +1,32 @@
-// The QOLPack contents.
+// Modpack presentation.
 //
-// Both downloads contain exactly the same 25 mods — verified by diffing the
-// .zip's jar list against the .mrpack manifest plus its overrides. Only the
-// packaging differs: the .mrpack lists Modrinth downloads and resolves them at
-// install time, the .zip bundles every jar.
-//
-// `modrinth` is the real project id taken from the pack manifest, so the links
-// are the pack's own sources rather than a guess. The two entries without one
-// are the pack's overrides: Modrinth will not host them, which is exactly why
-// they are shipped as files. That is a useful signal, so the page shows it.
-
-export const PACK = {
-  name: 'QOLPack',
-  version: '26.1.2',
-  minecraft: '26.1.2',
-  loader: 'Fabric 0.19.3',
-  files: {
-    mrpack: {
-      href: '/downloads/qolpack-26-1-2.mrpack',
-      filename: 'qolpack-26-1-2.mrpack',
-      bytes: 12_561_416,
-      label: 'Modrinth pack',
-      blurb:
-        'For Modrinth App, Prism or ATLauncher. Small, because mods are fetched on install.',
-    },
-    zip: {
-      href: '/downloads/qolpack-26-1-2.zip',
-      filename: 'qolpack-26-1-2.zip',
-      bytes: 91_327_161,
-      label: 'Full ZIP',
-      blurb:
-        'Every jar bundled. Drop the mods folder into any Fabric install — no launcher needed.',
-    },
-  },
-} as const;
-
-export type Mod = {
-  name: string;
-  version: string;
-  /** Modrinth project id, or null when the pack ships the jar directly. */
-  modrinth: string | null;
-  /** Set when the file is only in the pack, not on Modrinth. */
-  bundledOnly?: true;
-};
+// The packs themselves live in the database (see prisma/schema.prisma) since
+// they went plural and became something an admin uploads. What stays here is the
+// part that is curated copy rather than data: the mod *groups*. Their titles,
+// blurbs and colours are editorial voice, and a .mrpack manifest cannot tell you
+// which bucket a mod belongs in — so uploading fills in the mods and an admin
+// assigns the groups.
 
 export type ModGroup = {
   key: string;
   title: string;
   blurb: string;
   color: string;
-  mods: Mod[];
 };
 
+/**
+ * Order matters: this is the order the groups render in on the pack page.
+ *
+ * `other` is last and deliberately dull — it is where freshly imported mods land
+ * before anyone has sorted them, so it should look like an unfinished job rather
+ * than a category.
+ */
 export const MOD_GROUPS: ModGroup[] = [
   {
     key: 'skyblock',
     title: 'Skyblock',
     blurb: 'The reason the pack exists — the mods that actually change how you play.',
     color: '#55FF55',
-    mods: [
-      { name: 'SkyHanni', version: '7.29.0', modrinth: 'byNkmv5G' },
-      { name: 'SkyOcean', version: '1.17.2', modrinth: 'dIczrQAR' },
-      { name: 'SkyBlockPv', version: '1.8.8', modrinth: '8yqXwFLl' },
-      { name: 'SBO', version: '0.4.3', modrinth: '9lBqVbQF' },
-      { name: 'NoFrills', version: '0.4.11', modrinth: 'qpZgAErQ' },
-      { name: 'SecretRoutes', version: '1.0.0-beta4', modrinth: 'l1qibtk8' },
-      { name: 'Odin', version: '0.2.3', modrinth: 'jJJLywXp' },
-    ],
   },
   {
     key: 'risky',
@@ -74,54 +34,70 @@ export const MOD_GROUPS: ModGroup[] = [
     blurb:
       'Shipped as files because Modrinth will not host them. These are the ones that can get an account banned — install deliberately, not by accident.',
     color: '#FF5555',
-    mods: [
-      { name: 'NoammAddons', version: '1.2.3', modrinth: null, bundledOnly: true },
-      { name: 'Odin Client', version: '0.2.3-r1', modrinth: null, bundledOnly: true },
-    ],
   },
   {
     key: 'performance',
     title: 'Performance',
     blurb: 'Frames back, stutter gone. Safe on any server.',
     color: '#55FFFF',
-    mods: [
-      { name: 'Sodium', version: '0.9.1-beta.3', modrinth: 'AANobbMI' },
-      { name: 'Sodium Extra', version: '0.9.1', modrinth: 'PtjYWJkn' },
-      { name: 'Lithium', version: '0.24.6', modrinth: 'gvQqBUqZ' },
-      { name: 'FerriteCore', version: '9.0.0', modrinth: 'uXXizFIs' },
-      { name: 'EntityCulling', version: '1.10.5', modrinth: 'NNAgCjsB' },
-      { name: 'ImmediatelyFast', version: '1.15.3', modrinth: '5ZwdcRci' },
-    ],
   },
   {
     key: 'interface',
     title: 'Interface',
     blurb: 'Small quality-of-life fixes to the vanilla UI.',
     color: '#FFAA00',
-    mods: [
-      { name: 'Inventory Buttons', version: '1.2.2', modrinth: 'D5cgMv16' },
-      { name: 'Longer Chat History', version: '1.8', modrinth: 'f4P7fNKN' },
-    ],
   },
   {
     key: 'libraries',
     title: 'Libraries',
     blurb: 'Dependencies the above need. Nothing to configure — do not delete them.',
     color: '#9C92B8',
-    mods: [
-      { name: 'Fabric API', version: '0.154.0', modrinth: 'P7dR8mSH' },
-      { name: 'Fabric Loader', version: '0.19.3', modrinth: 'OoMgWV72' },
-      { name: 'Fabric Language Kotlin', version: '1.13.12', modrinth: 'Ha28R6CL' },
-      { name: 'Architectury', version: '20.0.7', modrinth: 'lhGA9TYQ' },
-      { name: 'Cloth Config', version: '26.1.154', modrinth: '9s6osm5g' },
-      { name: 'owo-lib', version: '0.13.0', modrinth: 'ccKDOlHs' },
-      { name: 'YetAnotherConfigLib', version: '3.9.5', modrinth: '1eAoo2KR' },
-      { name: 'Hypixel Mod API', version: '1.0.2', modrinth: '1A2mKfBx' },
-    ],
+  },
+  {
+    key: 'other',
+    title: 'Other',
+    blurb: 'Not sorted into a group yet.',
+    color: '#AAAAAA',
   },
 ];
 
-export const TOTAL_MODS = MOD_GROUPS.reduce((n, g) => n + g.mods.length, 0);
+export const DEFAULT_GROUP = 'other';
+/** Where the .mrpack's overrides land: "not on Modrinth" is what this group means. */
+export const BUNDLED_GROUP = 'risky';
+
+export function isGroupKey(value: string): boolean {
+  return MOD_GROUPS.some((g) => g.key === value);
+}
+
+export function groupLabel(key: string): string {
+  return MOD_GROUPS.find((g) => g.key === key)?.title ?? key;
+}
+
+export const MODPACK_FILE_KINDS = ['MRPACK', 'ZIP'] as const;
+export type ModpackFileKind = (typeof MODPACK_FILE_KINDS)[number];
+
+export function isFileKind(value: string): value is ModpackFileKind {
+  return (MODPACK_FILE_KINDS as readonly string[]).includes(value);
+}
+
+/** Copy for each download card. Fixed per kind — it describes the format, not the pack. */
+export const FILE_KINDS: Record<
+  ModpackFileKind,
+  { label: string; blurb: string; extension: string }
+> = {
+  MRPACK: {
+    label: 'Modrinth pack',
+    blurb:
+      'For Modrinth App, Prism or ATLauncher. Small, because mods are fetched on install.',
+    extension: '.mrpack',
+  },
+  ZIP: {
+    label: 'Full ZIP',
+    blurb:
+      'Every jar bundled. Drop the mods folder into any Fabric install — no launcher needed.',
+    extension: '.zip',
+  },
+};
 
 export function modrinthUrl(id: string): string {
   return `https://modrinth.com/project/${id}`;
@@ -130,4 +106,41 @@ export function modrinthUrl(id: string): string {
 export function formatBytes(bytes: number): string {
   const mb = bytes / 1_048_576;
   return mb >= 100 ? `${Math.round(mb)} MB` : `${mb.toFixed(1)} MB`;
+}
+
+/**
+ * Splits a trailing "Pack" off a name so it can be accented.
+ *
+ * Exists so "QOLPack" keeps rendering as QOL + a coloured "Pack", which is how
+ * the page has always looked, without hardcoding that one name.
+ */
+export function splitAccent(name: string): { head: string; tail: string } {
+  const match = /^(.*\S)(pack)$/i.exec(name);
+  if (!match) return { head: name, tail: '' };
+  return { head: match[1]!, tail: match[2]! };
+}
+
+export const MAX_SLUG_LENGTH = 48;
+export const MAX_NAME_LENGTH = 60;
+export const MAX_SUMMARY_LENGTH = 200;
+
+/**
+ * A URL- and filename-safe slug.
+ *
+ * Used for both, which is why it is this strict: the slug becomes part of the
+ * name the file is written under, so anything that could traverse a directory or
+ * confuse a shell has to be gone before it gets near the filesystem.
+ */
+export function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, MAX_SLUG_LENGTH)
+    .replace(/-+$/g, '');
+}
+
+export function isValidSlug(value: string): boolean {
+  return /^[a-z0-9]+(-[a-z0-9]+)*$/.test(value) && value.length <= MAX_SLUG_LENGTH;
 }

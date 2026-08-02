@@ -127,7 +127,17 @@ const PAGE_LABELS: Record<string, string> = {
 };
 
 function pageLabel(path: string): string {
-  return PAGE_LABELS[path] ?? path;
+  const known = PAGE_LABELS[path];
+  if (known) return known;
+
+  // Per-pack downloads are `download:<slug>:<kind>` and cannot be listed above,
+  // since packs are created by admins rather than declared in code.
+  const parts = path.split(':');
+  if (parts[0] === 'download' && parts.length === 3) {
+    return `Download — ${parts[1]} (${parts[2] === 'MRPACK' ? '.mrpack' : 'ZIP'})`;
+  }
+
+  return path;
 }
 
 function DailyChart({

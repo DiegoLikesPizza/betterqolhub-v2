@@ -48,3 +48,6 @@ next-env.d.ts
 
 # stale root-level SQLite artifact from the pre-rename schema
 /dev.db
+
+# Uploaded modpack files in local development (MODPACK_DOWNLOAD_DIR).
+.downloads/

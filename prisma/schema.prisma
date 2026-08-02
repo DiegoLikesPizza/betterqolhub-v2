@@ -28,6 +28,92 @@ enum Pricing {
   FREEMIUM
 }
 
+/// The two shapes a pack is published in. A closed set baked into the download
+/// route and the upload handler, so an enum rather than a validated String.
+enum ModpackFileKind {
+  MRPACK
+  ZIP
+}
+
+/// A downloadable modpack.
+///
+/// Was a hardcoded object in src/lib/modpack.ts until packs went plural.
+/// Everything an admin edits lives here; the *presentation* of the mod groups
+/// (their titles, blurbs and colours) stays in code, because that is curated
+/// copy rather than data — see MOD_GROUPS in src/lib/modpack.ts.
+model Modpack {
+  id      String @id @default(cuid())
+  /// URL segment, and the stable half of every uploaded filename.
+  slug    String @unique
+  name    String
+  /// One-line pitch under the title.
+  summary String
+
+  minecraft String
+  loader    String
+  version   String
+
+  /// Unpublished packs are invisible to the public and undownloadable — a pack
+  /// exists as a record before its (large) files finish uploading, and half an
+  /// upload is not something to serve.
+  isPublished Boolean @default(false)
+  /// Ascending. Lowest published pack is the one legacy /download/mrpack links
+  /// still resolve to.
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  files ModpackFile[]
+  mods  ModpackMod[]
+}
+
+/// One uploaded artefact of a pack. At most one per kind — re-uploading
+/// replaces both the row and the file on disk.
+model ModpackFile {
+  id        String  @id @default(cuid())
+  modpackId String
+  modpack   Modpack @relation(fields: [modpackId], references: [id], onDelete: Cascade)
+
+  kind     ModpackFileKind
+  /// Name on disk inside the downloads directory. Never taken from the client:
+  /// it is built from the slug, kind and version, so an upload cannot escape
+  /// the directory or overwrite an unrelated file.
+  filename String
+  bytes    Int
+
+  uploadedAt DateTime @default(now())
+
+  @@unique([modpackId, kind])
+}
+
+/// One mod inside a pack.
+///
+/// Read out of the uploaded .mrpack rather than typed in — the manifest already
+/// lists every file with its Modrinth project id, so retyping 25 rows per
+/// release would only be a chance to get them wrong. `group` is the exception:
+/// it is a curation call the manifest cannot make, so it is carried over from
+/// the previous upload where the mod is recognised, and set by hand otherwise.
+model ModpackMod {
+  id        String  @id @default(cuid())
+  modpackId String
+  modpack   Modpack @relation(fields: [modpackId], references: [id], onDelete: Cascade)
+
+  name    String
+  version String
+  /// Modrinth project id, or null when the pack ships the jar directly.
+  modrinth String?
+  /// True for jars in the .mrpack's overrides/ — files Modrinth will not host,
+  /// which on this site is a warning worth showing rather than a detail.
+  bundledOnly Boolean @default(false)
+
+  /// Key from MOD_GROUPS in src/lib/modpack.ts.
+  group     String
+  sortOrder Int    @default(0)
+
+  @@index([modpackId])
+}
+
 model User {
   id           String   @id @default(cuid())
   username     String   @unique

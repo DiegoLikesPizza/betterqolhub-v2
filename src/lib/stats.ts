@@ -141,7 +141,26 @@ export const PAGE_KEYS = {
 
 export type PageKey = (typeof PAGE_KEYS)[keyof typeof PAGE_KEYS];
 
-export async function recordPageHit(path: PageKey): Promise<void> {
+/**
+ * Per-pack download counters, e.g. `download:qolpack:ZIP`.
+ *
+ * Packs became plural and user-created, so their keys cannot be listed here
+ * ahead of time. The closed-set rule still holds where it matters: the slug is
+ * read from the database row the download resolved to, never from the URL, so a
+ * request for a pack that does not exist creates no row.
+ */
+export type DownloadKey = `download:${string}:${string}`;
+
+export function downloadKey(slug: string, kind: string): DownloadKey {
+  return `download:${slug}:${kind}`;
+}
+
+/** True for both the legacy `download:zip` keys and the per-pack ones. */
+export function isDownloadKey(path: string): boolean {
+  return path.startsWith('download:');
+}
+
+export async function recordPageHit(path: PageKey | DownloadKey): Promise<void> {
   const day = today();
 
   try {
@@ -172,7 +191,7 @@ export async function recordPageHit(path: PageKey): Promise<void> {
  * check so callers cannot forget it.
  */
 export async function recordPageHitFor(
-  path: PageKey,
+  path: PageKey | DownloadKey,
   userAgent: string | null | undefined
 ): Promise<void> {
   if (isAutomatedRequest(userAgent)) return;
