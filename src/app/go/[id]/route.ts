@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { recordListingClick, isAutomatedRequest } from '@/lib/stats';
 import { redirectTo } from '@/lib/redirect';
+import { withUtm } from '@/lib/outbound';
 
 // Counting outbound clicks by bouncing them through here rather than firing a
 // beacon from the browser: this works with JavaScript disabled, is not blocked
@@ -30,6 +31,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     await recordListingClick(id);
   }
 
-  // Absolute, and off-site: passed through as-is.
-  return redirectTo(target);
+  // Absolute and off-site. Tagged so the developer can see the visit came from
+  // here — see withUtm for what it refuses to touch.
+  return redirectTo(withUtm(target));
 }

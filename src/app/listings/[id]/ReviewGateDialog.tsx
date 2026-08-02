@@ -58,35 +58,38 @@ export default function ReviewGateDialog({
           <h3 className="pixel modal-title">{copy.title}</h3>
           <p className="modal-sub">{copy.body}</p>
 
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={close}>
-              Close
-            </button>
-
+          {/* Two rows on purpose: the ways forward sit together and share the
+              width, and dismissing sits apart from them. Close last, so the
+              control that does nothing is not the first thing under the cursor. */}
+          <div className="gate-actions">
             {gate === 'signed-out' && (
-              <>
+              <div className="gate-row">
                 <Link
                   href={`/register?callbackUrl=/listings/${listingId}`}
-                  className="btn btn-secondary"
+                  className="btn btn-secondary gate-btn"
                 >
                   Create account
                 </Link>
-                {/* The primary action is signing in: someone who already has an
-                    account is the far more common case here. */}
                 <Link
                   href={`/login?callbackUrl=/listings/${listingId}`}
-                  className="btn btn-primary"
+                  className="btn btn-primary gate-btn"
                 >
                   Log in
                 </Link>
-              </>
+              </div>
             )}
 
             {gate === 'no-discord' && (
-              <Link href="/settings" className="btn btn-primary">
-                Open Settings
-              </Link>
+              <div className="gate-row">
+                <Link href="/settings" className="btn btn-primary gate-btn">
+                  Open Settings
+                </Link>
+              </div>
             )}
+
+            <button type="button" className="btn btn-secondary gate-btn" onClick={close}>
+              Close
+            </button>
           </div>
         </div>
       </dialog>

@@ -2145,3 +2145,29 @@ select.mods-select { padding: 0.35rem 0.5rem; font-size: 0.85rem; width: auto; m
 /* Full width so it reads as the end of the list rather than as another item's
    control, and centred text so it stays legible at that width. */
 .review-more { width: 100%; margin-top: 0.5rem; }
+
+/* The review gate's actions: ways forward share one row, dismissing gets its
+   own beneath. Both rows fill the dialog, so the buttons line up with its edges
+   rather than floating at one end of it. */
+.gate-actions { display: flex; flex-direction: column; gap: 0.75rem; }
+.gate-row { display: flex; gap: 0.75rem; }
+/* nowrap with tighter side padding: at half the dialog's width a button is
+   about 174px, and "Create account" needs every pixel of that — wrapped across
+   two lines it reads as two controls rather than one. */
+/* inline-flex so the <a> buttons and the <button> end up the same height: an
+   anchor sits on the text baseline and picks up a few extra pixels otherwise.
+   nowrap with tighter side padding because at half the dialog's width a button
+   is about 174px, and "Create account" needs every pixel of it. */
+.gate-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  padding-left: 0.6rem;
+  padding-right: 0.6rem;
+  /* A <button> defaults to `line-height: normal` while an <a> inherits the
+     body's, which made the two rows 6px different in height for no visible
+     reason. */
+  line-height: inherit;
+}
