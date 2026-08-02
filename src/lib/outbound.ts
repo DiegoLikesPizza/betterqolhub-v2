@@ -5,7 +5,7 @@
 // with no referrer at all.
 
 /** What we call ourselves in someone else's analytics. */
-export const UTM_SOURCE = 'newqolhub.xyz';
+export const UTM_SOURCE = 'newqolhub';
 /** The standard companion. Without a medium, most tools bucket the visit oddly. */
 export const UTM_MEDIUM = 'referral';
 
