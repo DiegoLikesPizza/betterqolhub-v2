@@ -3,6 +3,17 @@
 // those may only export async functions.
 
 export const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,20}$/;
+
+/**
+ * A Discord snowflake: digits only. 17 today, 18-19 in practice, with room to
+ * grow — the id is a timestamp-derived integer, so it gets longer over time.
+ * Checked because the field is normally written by the bot, and a hand-typed
+ * "@someone" or a profile URL would otherwise be stored as if it were an id.
+ */
+export const DISCORD_ID_PATTERN = /^\d{17,20}$/;
+
+/** Discord's own cap on a username. */
+export const MAX_DISCORD_USERNAME_LENGTH = 32;
 export const MIN_PASSWORD_LENGTH = 8;
 
 export function isValidUsername(value: string): boolean {

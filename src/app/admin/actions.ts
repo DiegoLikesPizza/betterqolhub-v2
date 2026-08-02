@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { Prisma } from '@prisma/client';
 import { signOut } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { isCategoryKey } from '@/lib/categories';
@@ -14,6 +15,7 @@ import {
 } from '@/lib/pricing';
 import { requireAdmin } from '@/lib/authz';
 import { MAX_UNLIST_REASON_LENGTH } from '@/lib/moderation';
+import { DISCORD_ID_PATTERN, MAX_DISCORD_USERNAME_LENGTH } from '@/lib/account';
 import { notifyListing } from '@/lib/discord-bot';
 
 export type AddListingState = {
@@ -301,6 +303,87 @@ export async function setListingOwner(
   revalidatePath('/admin', 'layout');
   revalidatePath(`/listings/${listingId}`);
   return { ok: true, message: `${username} can now post announcements.` };
+}
+
+export type SetDiscordState = {
+  ok?: boolean;
+  message?: string;
+} | undefined;
+
+/**
+ * Links a Discord account to a member by hand, or removes the link.
+ *
+ * The normal path is the user proving it over DM, and that is what makes a
+ * linked account worth requiring for reviews and ownership. This is the escape
+ * hatch for when that path is unavailable — the bot is down, DMs are closed —
+ * and it is marked as such rather than passed off as verified.
+ */
+export async function setUserDiscord(
+  _prevState: SetDiscordState,
+  formData: FormData
+): Promise<SetDiscordState> {
+  const admin = await requireAdmin().catch(() => null);
+  if (!admin) return { ok: false, message: 'Admin access required.' };
+
+  const userId = String(formData.get('userId') ?? '').trim();
+  const discordId = String(formData.get('discordId') ?? '').trim();
+  const discordUsername = String(formData.get('discordUsername') ?? '').trim();
+
+  if (!userId) return { ok: false, message: 'Missing member.' };
+
+  if (!discordId) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        discordId: null,
+        discordUsername: null,
+        discordLinkedAt: null,
+        discordLinkedByAdmin: false,
+      },
+    });
+    revalidatePath('/admin', 'layout');
+    return { ok: true, message: 'Discord link removed.' };
+  }
+
+  if (!DISCORD_ID_PATTERN.test(discordId)) {
+    return {
+      ok: false,
+      message: 'That is not a Discord ID. Enable Developer Mode and use "Copy User ID".',
+    };
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        discordId,
+        discordUsername: discordUsername.slice(0, MAX_DISCORD_USERNAME_LENGTH) || null,
+        discordLinkedAt: new Date(),
+        // Flagged, so this stays distinguishable from a link the user proved.
+        discordLinkedByAdmin: true,
+      },
+    });
+  } catch (error) {
+    // discordId is unique: the same account cannot back two members, which is
+    // the property that stops one person reviewing twice.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      const holder = await prisma.user.findUnique({
+        where: { discordId },
+        select: { username: true },
+      });
+      return {
+        ok: false,
+        message: holder
+          ? `That Discord account is already linked to “${holder.username}”.`
+          : 'That Discord account is already linked to another member.',
+      };
+    }
+    console.error('[admin] failed to set discord link', error);
+    return { ok: false, message: 'Could not save that.' };
+  }
+
+  revalidatePath('/admin', 'layout');
+  return { ok: true, message: 'Linked. Marked as set by an admin, not verified.' };
 }
 
 export async function setUserRole(userId: string, makeAdmin: boolean) {

@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { setUserRole } from './actions';
 import Pager, { pageSlice, pageCount } from './Pager';
+import SetDiscordDialog from './SetDiscordDialog';
 
 type Member = {
   id: string;
@@ -12,6 +13,7 @@ type Member = {
   createdAt: string;
   discordUsername: string | null;
   discordLinkedAt: string | null;
+  discordLinkedByAdmin: boolean;
 };
 
 type SortKey = 'newest' | 'oldest' | 'name' | 'reviews';
@@ -157,11 +159,11 @@ function MemberRow({ member, isSelf }: { member: Member; isSelf: boolean }) {
             className="discord-linked"
             title={
               member.discordLinkedAt
-                ? `Linked ${new Date(member.discordLinkedAt).toLocaleDateString()}`
+                ? `${member.discordLinkedByAdmin ? 'Set by an admin, not verified' : 'Verified'} ${new Date(member.discordLinkedAt).toLocaleDateString()}`
                 : undefined
             }
           >
-            ✓ {member.discordUsername}
+            {member.discordLinkedByAdmin ? '~' : '✓'} {member.discordUsername}
           </span>
         ) : (
           // Not an error state — just a member who cannot post reviews yet.
@@ -174,6 +176,13 @@ function MemberRow({ member, isSelf }: { member: Member; isSelf: boolean }) {
       <td>{member.reviewCount}</td>
       <td className="table-muted">{new Date(member.createdAt).toLocaleDateString()}</td>
       <td className="col-actions">
+        <SetDiscordDialog
+          userId={member.id}
+          username={member.username}
+          discordUsername={member.discordUsername}
+          linkedByAdmin={member.discordLinkedByAdmin}
+        />
+
         {/* Self-demotion is blocked server-side too; hiding it here just avoids
             offering an action that will always fail. */}
         {isSelf && isAdmin ? (

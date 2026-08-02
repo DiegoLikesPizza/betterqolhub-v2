@@ -40,6 +40,7 @@ export type AdminMember = {
   createdAt: Date;
   discordUsername: string | null;
   discordLinkedAt: Date | null;
+  discordLinkedByAdmin: boolean;
 };
 
 export type AdminReview = {
@@ -187,6 +188,7 @@ export async function getAdminMembers(): Promise<AdminMember[]> {
       createdAt: true,
       discordUsername: true,
       discordLinkedAt: true,
+      discordLinkedByAdmin: true,
       _count: { select: { reviews: true } },
     },
   });
@@ -199,6 +201,7 @@ export async function getAdminMembers(): Promise<AdminMember[]> {
     createdAt: u.createdAt,
     discordUsername: u.discordUsername,
     discordLinkedAt: u.discordLinkedAt,
+    discordLinkedByAdmin: u.discordLinkedByAdmin,
   }));
 }
 

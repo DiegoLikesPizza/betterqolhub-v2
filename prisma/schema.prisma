@@ -36,12 +36,22 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // Set only once a DM code has been verified. discordId is the snowflake and
-  // is the durable identifier — discordUsername is a display cache, since
-  // Discord usernames can change.
+  // Normally set only once a DM code has been verified, which is what makes a
+  // linked account mean something — reviews and listing ownership both require
+  // one. discordId is the snowflake and is the durable identifier;
+  // discordUsername is a display cache, since Discord usernames can change.
   discordId       String?   @unique
   discordUsername String?
   discordLinkedAt DateTime?
+
+  /// True when an admin set the link by hand instead of the user proving it
+  /// over DM.
+  ///
+  /// Exists so the guarantee above stays checkable. Without it a link an admin
+  /// asserted and a link the user proved look identical, and "tied to a
+  /// verified Discord identity" quietly stops being true for an unknown subset
+  /// of accounts. Verifying properly later clears it.
+  discordLinkedByAdmin Boolean @default(false)
 
   /// Null means the username has never been changed, so the cooldown does not
   /// apply to a first change.
