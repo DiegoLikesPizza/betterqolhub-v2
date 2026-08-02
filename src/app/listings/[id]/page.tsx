@@ -19,7 +19,7 @@ import { recordListingViewFor } from '@/lib/stats';
 import { pricingBadge, pricingColor } from '@/lib/pricing';
 import { ANNOUNCEMENT_HISTORY_LIMIT } from '@/lib/announcements';
 import { UNLISTED_NOTICE } from '@/lib/moderation';
-import ReviewForm from './ReviewForm';
+import ReviewDialog from './ReviewDialog';
 import ReviewList from './ReviewList';
 import Announcements from './Announcements';
 import FollowButton from './FollowButton';
@@ -161,6 +161,10 @@ export default async function ListingDetailPage({
   // skipped entirely when the list is empty or only whitespace.
   const features = renderMarkdown(listing.features);
 
+  // The one question the reviews section asks. Everything else there is the
+  // explanation for a `false`.
+  const canReview = Boolean(user) && !isOwnListing && !reviewBanned && discordLinked;
+
   return (
     <div className="container narrow-page">
       <Link href="/listings" className="back-link">← All listings</Link>
@@ -301,53 +305,56 @@ export default async function ListingDetailPage({
       />
 
       <section style={{ marginTop: '3rem' }}>
-        <h2 className="pixel section-title" style={{ marginBottom: '1.5rem' }}>
-          Community Reviews
-        </h2>
+        <div className="reviews-head">
+          <h2 className="pixel section-title">Community Reviews</h2>
+          {canReview && (
+            <ReviewDialog
+              listingId={listing.id}
+              customEmoji={customEmoji}
+              existing={ownReview ? { rating: ownReview.rating, body: ownReview.body } : null}
+            />
+          )}
+        </div>
 
-        {!user ? (
+        {/* Shown only in place of the button. Someone who can review does not
+            need to be told why they can. */}
+        {!canReview && (
           <div className="form-card" style={{ textAlign: 'center' }}>
             <p style={{ color: 'var(--text-secondary)' }}>
-              <Link href={`/login?callbackUrl=/listings/${listing.id}`} style={{ color: 'var(--gold)' }}>
-                Sign in
-              </Link>{' '}
-              to leave a review.
+              {!user ? (
+                <>
+                  <Link
+                    href={`/login?callbackUrl=/listings/${listing.id}`}
+                    style={{ color: 'var(--gold)' }}
+                  >
+                    Sign in
+                  </Link>{' '}
+                  to leave a review.
+                </>
+              ) : isOwnListing ? (
+                <>
+                  You are on this listing&rsquo;s team, so you cannot review it. Use{' '}
+                  <strong>Post announcement</strong> above to say something.
+                </>
+              ) : reviewBanned ? (
+                // Before the Discord prompt: sending a banned account through a
+                // setup flow that changes nothing would be a lie. The reason is
+                // not shown — it is an admin note.
+                <>
+                  Your account cannot post reviews. If you think that is a mistake,
+                  reach out to an admin on Discord.
+                </>
+              ) : (
+                <>
+                  Reviews are tied to a verified Discord account.{' '}
+                  <Link href="/settings" style={{ color: 'var(--gold)' }}>
+                    Link yours in Settings
+                  </Link>{' '}
+                  to post one.
+                </>
+              )}
             </p>
           </div>
-        ) : isOwnListing ? (
-          <div className="form-card" style={{ textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-secondary)' }}>
-              You are on this listing&rsquo;s team, so you cannot review it. Use{' '}
-              <strong>Post announcement</strong> above to say something.
-            </p>
-          </div>
-        ) : reviewBanned ? (
-          // Checked before the Discord prompt: telling a banned account to go
-          // link Discord would send them through a setup flow that changes
-          // nothing. The reason is not shown — it is an admin note.
-          <div className="form-card" style={{ textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-secondary)' }}>
-              Your account cannot post reviews. If you think that is a mistake,
-              reach out to an admin on Discord.
-            </p>
-          </div>
-        ) : !discordLinked ? (
-          // The server action enforces this too; this is just the friendly path.
-          <div className="form-card" style={{ textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-secondary)' }}>
-              Reviews are tied to a verified Discord account.{' '}
-              <Link href="/settings" style={{ color: 'var(--gold)' }}>
-                Link yours in Settings
-              </Link>{' '}
-              to post one.
-            </p>
-          </div>
-        ) : (
-          <ReviewForm
-            listingId={listing.id}
-            customEmoji={customEmoji}
-            existing={ownReview ? { rating: ownReview.rating, body: ownReview.body } : null}
-          />
         )}
 
         <ReviewList

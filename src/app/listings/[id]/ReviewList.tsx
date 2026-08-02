@@ -1,6 +1,6 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { deleteReview } from './actions';
 import { stars, ratingColor } from '@/lib/reviews';
 import EmojiText from '@/app/EmojiText';
@@ -14,6 +14,14 @@ type ReviewItem = {
   createdAt: string;
 };
 
+/**
+ * How many reviews show before asking.
+ *
+ * Enough to judge the consensus at a glance, few enough that a listing with
+ * forty reviews does not bury everything below it.
+ */
+const INITIAL = 5;
+
 export default function ReviewList({
   reviews,
   viewerId,
@@ -23,6 +31,8 @@ export default function ReviewList({
   viewerId: string | null;
   viewerIsAdmin: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
+
   if (reviews.length === 0) {
     return (
       <p style={{ color: 'var(--text-secondary)', marginTop: '2rem' }}>
@@ -31,15 +41,32 @@ export default function ReviewList({
     );
   }
 
+  const shown = expanded ? reviews : reviews.slice(0, INITIAL);
+  const hidden = reviews.length - shown.length;
+
   return (
     <div className="review-list">
-      {reviews.map((review) => (
+      {shown.map((review) => (
         <ReviewRow
           key={review.id}
           review={review}
           canDelete={viewerIsAdmin || review.userId === viewerId}
         />
       ))}
+
+      {hidden > 0 && (
+        <button type="button" className="btn btn-secondary review-more" onClick={() => setExpanded(true)}>
+          Show {hidden} more {hidden === 1 ? 'review' : 'reviews'}
+        </button>
+      )}
+
+      {/* Only offered once expanded, and only when it saves real scrolling —
+          collapsing a list of seven is a control nobody needs. */}
+      {expanded && reviews.length > INITIAL * 2 && (
+        <button type="button" className="btn btn-secondary review-more" onClick={() => setExpanded(false)}>
+          Show fewer
+        </button>
+      )}
     </div>
   );
 }

@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { UNICODE_EMOJI, emojiToken, emojiUrl, type CustomEmoji } from '@/lib/emoji';
 
+/** Roughly the panel's width, used to keep it on screen near the right edge. */
+const PANEL_WIDTH = 340;
+const MARGIN = 8;
+
 export default function EmojiPicker({
   customEmoji,
   onPick,
@@ -12,24 +16,58 @@ export default function EmojiPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [at, setAt] = useState<{ top: number; left: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Positioned as `fixed` from the trigger's rect rather than `absolute` inside
+  // it. The review form now lives in a <dialog> whose body scrolls, and any
+  // ancestor with overflow other than visible clips an absolutely positioned
+  // child — the panel would have been cut off at the dialog's edge. Fixed
+  // elements escape that, which is the same reason the admin row menu does it.
+  function place() {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setAt({
+      top: rect.bottom + MARGIN,
+      left: Math.max(MARGIN, Math.min(rect.right - PANEL_WIDTH, window.innerWidth - PANEL_WIDTH - MARGIN)),
+    });
+  }
 
   // Close on outside click and on Escape — expected of any popover.
   useEffect(() => {
     if (!open) return;
 
     function onDown(e: MouseEvent) {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (!rootRef.current?.contains(target) && !panelRef.current?.contains(target)) {
+        setOpen(false);
+      }
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
+      // Stopped here so Escape closes the picker without also closing the
+      // dialog it now sits inside.
+      if (e.key === 'Escape' && open) {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    }
+    // A fixed panel does not travel with its trigger, so it closes rather than
+    // hanging in the wrong place.
+    function onMove() {
+      setOpen(false);
     }
 
     document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('scroll', onMove, true);
+    window.addEventListener('resize', onMove);
     return () => {
       document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('scroll', onMove, true);
+      window.removeEventListener('resize', onMove);
     };
   }, [open]);
 
@@ -41,17 +79,27 @@ export default function EmojiPicker({
   return (
     <div className="emoji-picker-root" ref={rootRef}>
       <button
+        ref={triggerRef}
         type="button"
         className="emoji-trigger"
         aria-expanded={open}
         aria-label="Insert emoji"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (!open) place();
+          setOpen((v) => !v);
+        }}
       >
         😀
       </button>
 
-      {open && (
-        <div className="emoji-panel" role="dialog" aria-label="Emoji picker">
+      {open && at && (
+        <div
+          ref={panelRef}
+          className="emoji-panel"
+          role="dialog"
+          aria-label="Emoji picker"
+          style={{ top: at.top, left: at.left }}
+        >
           <input
             type="text"
             className="form-input emoji-search"

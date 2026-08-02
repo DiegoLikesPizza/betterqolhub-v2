@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useRef, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { submitReview, type ReviewFormState } from './actions';
 import { MAX_BODY_LENGTH, MAX_RATING, REVIEW_RULE } from '@/lib/reviews';
 import { displayLength, type CustomEmoji } from '@/lib/emoji';
@@ -12,10 +12,13 @@ export default function ReviewForm({
   listingId,
   existing,
   customEmoji,
+  onPosted,
 }: {
   listingId: string;
   existing: Existing;
   customEmoji: CustomEmoji[];
+  /** Called once the review saved, so a container can close itself. */
+  onPosted?: () => void;
 }) {
   const [state, action, pending] = useActionState<ReviewFormState, FormData>(
     submitReview,
@@ -23,6 +26,15 @@ export default function ReviewForm({
   );
 
   const [rating, setRating] = useState(existing?.rating ?? 0);
+  // Deliberately after the success message renders rather than instead of it:
+  // the dialog closes on the next tick, so the poster sees it landed.
+  useEffect(() => {
+    if (state?.ok && onPosted) {
+      const timer = setTimeout(onPosted, 900);
+      return () => clearTimeout(timer);
+    }
+  }, [state, onPosted]);
+
   const [hovered, setHovered] = useState(0);
   const [body, setBody] = useState(existing?.body ?? '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
