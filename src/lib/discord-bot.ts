@@ -6,6 +6,8 @@
 // rather than throws. The one exception is the link request, whose result the
 // user is actively waiting on.
 
+import { SITE_URL } from '@/lib/site';
+
 const BOT_URL = process.env.DISCORD_BOT_URL;
 const BOT_SECRET = process.env.DISCORD_BOT_SECRET;
 
@@ -97,6 +99,39 @@ export async function notifyReview(
     }
   } catch (error) {
     console.error(`[discord-bot] review ${action} could not reach the bot:`, error);
+  }
+}
+
+type AnnouncementLike = {
+  id: string;
+  listingId: string;
+  listingName: string;
+  body: string;
+  author: string;
+};
+
+/**
+ * Mirrors an announcement into its listing's Discord forum thread.
+ *
+ * That thread is the notification mechanism: anyone following it already gets a
+ * Discord ping for what lands there, so this needs no opt-in flag, no per-user
+ * delivery record, and none of the "DMs are closed" failures the linking flow
+ * runs into. The site's notification centre remains the durable record — this is
+ * the push on top of it, and failing here must never fail the post itself.
+ */
+export async function notifyAnnouncement(announcement: AnnouncementLike): Promise<void> {
+  if (!isBotConfigured()) return;
+  try {
+    const result = await callBot(
+      '/events/announcement',
+      { ...announcement, url: `${SITE_URL}/listings/${announcement.listingId}` },
+      EVENT_TIMEOUT_MS
+    );
+    if (!result.ok) {
+      console.error(`[discord-bot] announcement failed (${result.status})`, result.body);
+    }
+  } catch (error) {
+    console.error('[discord-bot] announcement could not reach the bot:', error);
   }
 }
 

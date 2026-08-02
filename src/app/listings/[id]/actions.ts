@@ -6,7 +6,7 @@ import { currentUser, requireUser } from '@/lib/authz';
 import { requireListingTeam, isOnListingTeam } from '@/lib/team-access';
 import { MAX_ANNOUNCEMENT_LENGTH } from '@/lib/announcements';
 import { isValidRating, MAX_BODY_LENGTH } from '@/lib/reviews';
-import { notifyReview } from '@/lib/discord-bot';
+import { notifyReview, notifyAnnouncement } from '@/lib/discord-bot';
 import {
   countCustomEmoji,
   displayLength,
@@ -161,11 +161,14 @@ export type AnnouncementFormState = {
 } | undefined;
 
 /**
- * Publishes an announcement on a listing the caller owns.
+ * Publishes an announcement on a listing the caller develops.
  *
- * Note there is no Discord notification here, unlike reviews: an announcement
- * is the developer's own message, and mirroring it into the server would put
- * unvetted vendor claims in front of the community under the hub's name.
+ * This *is* mirrored to Discord, but only into the listing's own forum thread —
+ * never into the general reviews channel. That distinction is the point: someone
+ * who followed that thread asked to hear from this developer, whereas a broadcast
+ * would put unvetted vendor claims in front of the whole server under the hub's
+ * name. It doubles as the notification mechanism, since Discord already pings
+ * thread followers.
  */
 export async function postAnnouncement(
   _prevState: AnnouncementFormState,
@@ -194,14 +197,26 @@ export async function postAnnouncement(
     };
   }
 
+  let saved;
   try {
-    await prisma.announcement.create({
+    saved = await prisma.announcement.create({
       data: { listingId, authorId: author.id, body },
+      include: { listing: { select: { name: true } } },
     });
   } catch (error) {
     console.error('[announcements] failed to save', error);
     return { ok: false, message: 'Could not post that. Try again.' };
   }
+
+  // After the write, and never able to undo it: the announcement is live on the
+  // site whether or not Discord hears about it.
+  await notifyAnnouncement({
+    id: saved.id,
+    listingId,
+    listingName: saved.listing.name,
+    body: saved.body,
+    author: author.name ?? 'The developer',
+  });
 
   revalidatePath(`/listings/${listingId}`);
   return { ok: true, message: 'Announcement posted.' };
