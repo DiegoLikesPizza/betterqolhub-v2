@@ -7,7 +7,7 @@ import type { Role } from '@prisma/client';
 import NotificationCentre from './NotificationCentre';
 import type { NotificationFeed } from '@/lib/notifications';
 
-type NavUser = { name?: string | null; role: Role } | null;
+type NavUser = { name?: string | null; role: Role; inTeam: boolean } | null;
 
 // Client component so the current route can be highlighted and the mobile menu
 // can open; the session is resolved on the server and passed in, and `logout` is
@@ -60,6 +60,11 @@ export default function NavBar({
           Discord
         </a>
       </li>
+      {/* Only for people who are actually on a team — for everyone else the
+          page would just explain that they are not on one. */}
+      {user?.inTeam && (
+        <li><Link href="/teams" className={cls('/teams')} onClick={close}>Teams</Link></li>
+      )}
       {user?.role === 'ADMIN' && (
         <li><Link href="/admin" className={cls('/admin')} onClick={close}>Admin</Link></li>
       )}

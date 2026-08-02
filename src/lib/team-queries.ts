@@ -106,7 +106,12 @@ function toSnapshot(row: {
   };
 }
 
-type ChangeRequestFilter = { status?: 'PENDING' | 'APPROVED' | 'REJECTED'; listingId?: string };
+type ChangeRequestFilter = {
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  listingId?: string;
+  /** Every listing a team speaks for, so its own page can show all its proposals. */
+  listingIds?: string[];
+};
 
 export async function getChangeRequests(
   filter: ChangeRequestFilter = {}
@@ -115,6 +120,7 @@ export async function getChangeRequests(
     where: {
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.listingId ? { listingId: filter.listingId } : {}),
+      ...(filter.listingIds ? { listingId: { in: filter.listingIds } } : {}),
     },
     // Oldest pending first: a queue that shows the newest first quietly starves
     // whatever has been waiting longest.

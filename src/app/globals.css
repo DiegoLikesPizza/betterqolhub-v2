@@ -2027,3 +2027,20 @@ select.mods-select { padding: 0.35rem 0.5rem; font-size: 0.85rem; width: auto; m
   .team-head, .cr-head, .propose-head { flex-direction: column; }
   .cr-actions { justify-content: stretch; }
 }
+
+.my-team-subtitle {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+.my-team-list { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+.my-team-list li { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.my-team-flag {
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--gold);
+  background: rgba(255, 170, 0, 0.08);
+  border: 1px solid rgba(255, 170, 0, 0.35);
+  border-radius: 2px;
+  cursor: help;
+}

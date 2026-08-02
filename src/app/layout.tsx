@@ -52,19 +52,23 @@ export default async function RootLayout({
     ? await Promise.all([
         prisma.user.findUnique({
           where: { id: user.id },
-          select: { discordId: true },
+          // The team count rides along on a query that already runs, so the
+          // navbar can hide the Teams link from the people it means nothing to
+          // without costing a second round trip.
+          select: { discordId: true, _count: { select: { teams: true } } },
         }),
         getNotifications(user.id),
       ])
     : [null, EMPTY_FEED];
 
   const discordLinked = user ? Boolean(account?.discordId) : true;
+  const inTeam = Boolean(account?._count.teams);
 
   return (
     <html lang="en">
       <body>
         <NavBar
-          user={user ? { name: user.name, role: user.role } : null}
+          user={user ? { name: user.name, role: user.role, inTeam } : null}
           logout={logout}
           notifications={notifications}
           markNotificationsRead={markNotificationsRead}
