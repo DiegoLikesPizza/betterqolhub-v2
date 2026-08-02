@@ -4,6 +4,19 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  /**
+   * Behind nginx, the request Next receives is addressed to 127.0.0.1:3003.
+   * Without this, Auth.js builds every callback URL from that address, and
+   * `https://localhost:3003` ends up in the callback-url cookie and in the
+   * public /api/auth/providers response.
+   *
+   * The proxy sets Host and X-Forwarded-Proto from the real request, so trusting
+   * them is what makes the public origin recoverable. Production additionally
+   * pins `AUTH_URL`, which takes precedence — this is the floor, so a deployment
+   * that forgets that variable degrades to the right host rather than to
+   * localhost.
+   */
+  trustHost: true,
   session: { strategy: 'jwt' },
   pages: {
     signIn: '/login',

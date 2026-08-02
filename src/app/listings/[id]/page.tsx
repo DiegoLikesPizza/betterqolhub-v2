@@ -18,7 +18,6 @@ import { pricingBadge, pricingColor } from '@/lib/pricing';
 import { ANNOUNCEMENT_HISTORY_LIMIT } from '@/lib/announcements';
 import { UNLISTED_NOTICE } from '@/lib/moderation';
 import ReviewForm from './ReviewForm';
-import SafetyNotice from '@/app/SafetyNotice';
 import ReviewList from './ReviewList';
 import Announcements from './Announcements';
 import FollowButton from './FollowButton';
@@ -223,8 +222,6 @@ export default async function ListingDetailPage({
             </a>
           )}
         </div>
-
-        <SafetyNotice />
       </article>
 
       {/* Above the reviews but in its own block: the developer's word and the

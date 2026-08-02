@@ -93,7 +93,7 @@ export default async function ModpackPage({ params }: { params: Promise<{ slug: 
         })}
       </section>
 
-      <SafetyNotice variant="modpack" />
+      <SafetyNotice />
 
       {pack.files.length > 1 && (
         <p className="pack-note">
