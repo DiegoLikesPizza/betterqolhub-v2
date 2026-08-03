@@ -3,8 +3,21 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { currentUser, requireUser } from '@/lib/authz';
-import { requireListingTeam, isOnListingTeam } from '@/lib/team-access';
+import {
+  requireListingTeam,
+  requireListingLead,
+  isOnListingTeam,
+} from '@/lib/team-access';
 import { MAX_ANNOUNCEMENT_LENGTH } from '@/lib/announcements';
+import {
+  MAX_CHANGELOG_LENGTH,
+  MAX_VERSION_LENGTH,
+} from '@/lib/changelog';
+import {
+  parseWebhookUrl,
+  sendChangelogWebhook,
+  sendWebhookTest,
+} from '@/lib/discord-webhook';
 import { isValidRating, MAX_BODY_LENGTH } from '@/lib/reviews';
 import { notifyReview, notifyAnnouncement } from '@/lib/discord-bot';
 import {
@@ -237,6 +250,223 @@ export async function deleteAnnouncement(announcementId: string) {
   await prisma.announcement.delete({ where: { id: announcementId } });
 
   revalidatePath(`/listings/${announcement.listingId}`);
+}
+
+export type ChangelogFormState = {
+  ok?: boolean;
+  message?: string;
+  /**
+   * Set when the entry saved but Discord did not take it. Reported apart from
+   * `message` because the two mean opposite things to the reader: one is a
+   * failure to publish, the other is a published release whose mirror missed.
+   */
+  webhookWarning?: string;
+} | undefined;
+
+/**
+ * Publishes a release on a listing the caller develops.
+ *
+ * Not gated behind the change-request queue that listing *edits* go through. The
+ * reason that queue exists is that the site vouches for what a listing claims to
+ * be, and a developer must not be able to rewrite that after being marked
+ * trusted. A changelog makes no such claim: it is dated, attributed, sits under
+ * its own heading, and moves no rating. Holding a release note until an admin
+ * wakes up would make the feature useless on the one day it matters.
+ */
+export async function publishChangelog(
+  _prevState: ChangelogFormState,
+  formData: FormData
+): Promise<ChangelogFormState> {
+  const listingId = String(formData.get('listingId') ?? '').trim();
+  if (!listingId) {
+    return { ok: false, message: 'Missing listing.' };
+  }
+
+  let author;
+  try {
+    author = await requireListingTeam(listingId);
+  } catch {
+    return { ok: false, message: 'Only this listing’s team can publish releases.' };
+  }
+
+  const version = String(formData.get('version') ?? '').trim();
+  const body = String(formData.get('body') ?? '').trim();
+
+  if (!version) {
+    return { ok: false, message: 'Give the release a version.' };
+  }
+  if (version.length > MAX_VERSION_LENGTH) {
+    return { ok: false, message: `Versions are limited to ${MAX_VERSION_LENGTH} characters.` };
+  }
+  if (!body) {
+    return { ok: false, message: 'Write what changed.' };
+  }
+  if (body.length > MAX_CHANGELOG_LENGTH) {
+    return {
+      ok: false,
+      message: `Release notes are limited to ${MAX_CHANGELOG_LENGTH} characters.`,
+    };
+  }
+
+  // Optional, so old releases can be entered with the date they actually
+  // shipped. A future date is refused rather than clamped: it would sit at the
+  // top of the history forever, and silently changing what someone typed is
+  // worse than telling them it was wrong.
+  const releasedRaw = String(formData.get('releasedAt') ?? '').trim();
+  let releasedAt = new Date();
+  if (releasedRaw) {
+    const parsed = new Date(`${releasedRaw}T12:00:00.000Z`);
+    if (Number.isNaN(parsed.getTime())) {
+      return { ok: false, message: 'That release date is not a date.' };
+    }
+    if (parsed.getTime() > Date.now() + 24 * 60 * 60 * 1000) {
+      return { ok: false, message: 'A release cannot be dated in the future.' };
+    }
+    releasedAt = parsed;
+  }
+
+  let saved;
+  try {
+    saved = await prisma.changelogEntry.create({
+      data: { listingId, authorId: author.id, version, body, releasedAt },
+      include: {
+        listing: { select: { name: true, changelogWebhookUrl: true } },
+      },
+    });
+  } catch (error) {
+    console.error('[changelog] failed to save', error);
+    return { ok: false, message: 'Could not publish that. Try again.' };
+  }
+
+  revalidatePath(`/listings/${listingId}`);
+
+  // After the write, and unable to undo it. The release is live here whether or
+  // not the team's own Discord hears about it — so a failure is reported as a
+  // note on a success, not as a failure.
+  let webhookWarning: string | undefined;
+  if (saved.listing.changelogWebhookUrl) {
+    const result = await sendChangelogWebhook(saved.listing.changelogWebhookUrl, {
+      listingId,
+      listingName: saved.listing.name,
+      version: saved.version,
+      body: saved.body,
+      author: author.name ?? 'The developer',
+      releasedAt: saved.releasedAt,
+    });
+    if (!result.ok) {
+      webhookWarning = `Published here, but the Discord webhook failed: ${result.reason}`;
+    }
+  }
+
+  return { ok: true, message: 'Release published.', webhookWarning };
+}
+
+export async function deleteChangelogEntry(entryId: string) {
+  const entry = await prisma.changelogEntry.findUnique({
+    where: { id: entryId },
+    select: { listingId: true },
+  });
+  if (!entry) return;
+
+  // Against the listing rather than the author, so a team can clean up after a
+  // member who has since left — the same rule announcements use.
+  await requireListingTeam(entry.listingId);
+
+  await prisma.changelogEntry.delete({ where: { id: entryId } });
+
+  revalidatePath(`/listings/${entry.listingId}`);
+}
+
+export type WebhookFormState = {
+  ok?: boolean;
+  message?: string;
+} | undefined;
+
+/**
+ * Points a listing's releases at a Discord webhook, or clears it.
+ *
+ * Lead-only. The URL is a standing credential for a channel in someone else's
+ * server, and handing every member of the team the ability to redirect it is a
+ * different thing from letting them publish a release.
+ */
+export async function setChangelogWebhook(
+  _prevState: WebhookFormState,
+  formData: FormData
+): Promise<WebhookFormState> {
+  const listingId = String(formData.get('listingId') ?? '').trim();
+  if (!listingId) {
+    return { ok: false, message: 'Missing listing.' };
+  }
+
+  try {
+    await requireListingLead(listingId);
+  } catch {
+    return { ok: false, message: 'Only a team lead can change this.' };
+  }
+
+  // Removal is its own button rather than "save an empty field". The input is
+  // always empty when the dialog opens — it cannot be prefilled, since the
+  // stored URL is a credential the browser never receives — so an empty submit
+  // is far more likely to be a slip than an intention to disconnect.
+  if (String(formData.get('intent') ?? '') === 'remove') {
+    await prisma.listing.update({
+      where: { id: listingId },
+      data: { changelogWebhookUrl: null },
+    });
+    revalidatePath(`/listings/${listingId}`);
+    return { ok: true, message: 'Webhook removed. Releases stay on the site.' };
+  }
+
+  const raw = String(formData.get('webhookUrl') ?? '').trim();
+  if (!raw) {
+    return { ok: false, message: 'Paste a webhook URL, or use “Remove” to disconnect.' };
+  }
+
+  const parsed = parseWebhookUrl(raw);
+  if (!parsed) {
+    return {
+      ok: false,
+      message:
+        'That is not a Discord webhook URL. In Discord: Channel settings → Integrations → Webhooks → Copy Webhook URL.',
+    };
+  }
+
+  await prisma.listing.update({
+    where: { id: listingId },
+    data: { changelogWebhookUrl: parsed.url },
+  });
+
+  revalidatePath(`/listings/${listingId}`);
+  return { ok: true, message: 'Webhook saved. Use “Send test” to check it.' };
+}
+
+/**
+ * Posts a fixed message to the configured webhook.
+ *
+ * Reads the URL from the database rather than taking one from the caller: a
+ * parameter would turn this into a button that makes the server POST to an
+ * address of the caller's choosing, which is the thing parseWebhookUrl exists to
+ * prevent.
+ */
+export async function testChangelogWebhook(listingId: string): Promise<WebhookFormState> {
+  try {
+    await requireListingLead(listingId);
+  } catch {
+    return { ok: false, message: 'Only a team lead can do that.' };
+  }
+
+  const listing = await prisma.listing.findUnique({
+    where: { id: listingId },
+    select: { name: true, changelogWebhookUrl: true },
+  });
+  if (!listing?.changelogWebhookUrl) {
+    return { ok: false, message: 'No webhook is set for this listing.' };
+  }
+
+  const result = await sendWebhookTest(listing.changelogWebhookUrl, listing.name);
+  return result.ok
+    ? { ok: true, message: 'Sent. Check the channel.' }
+    : { ok: false, message: result.reason };
 }
 
 export async function deleteReview(reviewId: string) {

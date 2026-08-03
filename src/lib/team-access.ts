@@ -77,6 +77,23 @@ export async function requireListingTeam(listingId: string): Promise<SessionUser
   return user;
 }
 
+/**
+ * Throws unless the caller leads this listing's team, or is an admin.
+ *
+ * A narrower gate than requireListingTeam, for the settings an ordinary member
+ * has no business changing — currently the Discord webhook, which is a
+ * credential for a server the lead owns and everyone else on the team merely
+ * publishes into.
+ */
+export async function requireListingLead(listingId: string): Promise<SessionUser> {
+  const user = await requireUser();
+  const access = await listingAccessFor(user, listingId);
+  if (!access.isLead) {
+    throw new Error('Forbidden: only a team lead or an admin can do that.');
+  }
+  return user;
+}
+
 /** Whether this user develops the listing — used to refuse self-reviews. */
 export async function isOnListingTeam(
   user: SessionUser | null,

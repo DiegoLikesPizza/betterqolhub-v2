@@ -1433,6 +1433,22 @@ select.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; fo
 }
 .notif-time { display: block; margin-top: 0.25rem; font-size: 0.72rem; color: var(--text-secondary); }
 
+/* A release and a piece of news read very differently, and the body line alone
+   does not always say which one arrived. */
+.notif-tag {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--frame);
+  border-radius: 2px;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
 /* Developer announcements ------------------------------------------------- */
 /* Deliberately not styled like a review. A review is the community's verdict;
    this is the vendor talking about their own product, and a reader has to be
@@ -1502,6 +1518,85 @@ select.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; fo
 /* The dialog can hold a lot of them, so it scrolls rather than growing past
    the viewport. */
 .announce-history { max-height: 60vh; overflow-y: auto; margin-bottom: 1.25rem; }
+
+/* Changelog --------------------------------------------------------------- */
+/* Shares the announcement furniture (.announce-head, .announce-more,
+   .announce-actions) on purpose: both are the developer speaking, and giving
+   them two visual languages would suggest a distinction that is not there. What
+   differs is the version badge and the timeline rule down the left, which is
+   what says "history" rather than "news". */
+.changelog-block { margin-top: 3rem; }
+
+.changelog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.changelog-entry {
+  background: var(--bg-panel);
+  border: 2px solid var(--frame);
+  border-left: 4px solid var(--frame);
+  border-radius: 2px;
+  padding: 1rem 1.15rem;
+}
+/* The newest release is the one anyone came for, so it gets the gold rule and
+   the rest recede into the history behind it. */
+.changelog-entry:first-child { border-left-color: var(--gold); }
+
+.changelog-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+}
+
+/* Monospace so version strings line up down the column when several are open,
+   and nowrap because a wrapped version number reads as two versions. */
+.changelog-version {
+  padding: 0.15rem 0.5rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--frame);
+  border-radius: 2px;
+  color: var(--gold);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.changelog-body { font-size: 0.92rem; }
+
+/* Version and date side by side while there is room, stacked on a phone —
+   where the date field is the one that would otherwise squeeze the version
+   input down to about four characters. */
+.changelog-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 520px) {
+  .changelog-fields { grid-template-columns: 1fr; }
+}
+
+/* Masked, and shown as code so the eye reads it as a value rather than prose.
+   Wraps because the id alone is 19 digits. */
+.webhook-current {
+  margin: 0 0 1rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.webhook-current code {
+  padding: 0.1rem 0.35rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--frame);
+  border-radius: 2px;
+  font-size: 0.85em;
+}
 
 /* Stated above the box rather than after a rejection — nothing here is enforced
    in code, so the only place it can do any work is while someone is writing. */

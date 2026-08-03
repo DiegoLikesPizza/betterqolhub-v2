@@ -46,7 +46,15 @@ export default function FeaturesField({
       </div>
 
       {showPreview ? (
-        <div className="markdown-body features-preview">{renderMarkdown(value)}</div>
+        <>
+          {/* The textarea is unmounted while previewing, and an unmounted field
+              sends nothing — so without this, saving from the preview submitted
+              no `features` at all and silently wiped the list the writer was
+              looking at. Only one of the two is ever mounted, so the name is
+              never duplicated. */}
+          <input type="hidden" name="features" value={value} />
+          <div className="markdown-body features-preview">{renderMarkdown(value)}</div>
+        </>
       ) : (
         <textarea
           id={id}

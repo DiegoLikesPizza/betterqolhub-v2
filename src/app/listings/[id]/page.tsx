@@ -18,11 +18,14 @@ import { fetchGuildEmojis } from '@/lib/discord-bot';
 import { recordListingViewFor } from '@/lib/stats';
 import { pricingBadge, pricingColor } from '@/lib/pricing';
 import { ANNOUNCEMENT_HISTORY_LIMIT } from '@/lib/announcements';
+import { CHANGELOG_HISTORY_LIMIT } from '@/lib/changelog';
+import { maskWebhookUrl } from '@/lib/discord-webhook';
 import { UNLISTED_NOTICE } from '@/lib/moderation';
 import ReviewDialog from './ReviewDialog';
 import ReviewGateDialog, { type ReviewGate } from './ReviewGateDialog';
 import ReviewList from './ReviewList';
 import Announcements from './Announcements';
+import Changelog from './Changelog';
 import FollowButton from './FollowButton';
 import ProposeChanges from './ProposeChanges';
 import { renderMarkdown } from '@/lib/markdown';
@@ -102,6 +105,11 @@ export default async function ListingDetailPage({
       announcements: {
         orderBy: { createdAt: 'desc' },
         take: ANNOUNCEMENT_HISTORY_LIMIT,
+        include: { author: { select: { username: true } } },
+      },
+      changelog: {
+        orderBy: { releasedAt: 'desc' },
+        take: CHANGELOG_HISTORY_LIMIT,
         include: { author: { select: { username: true } } },
       },
       _count: { select: { followers: true } },
@@ -314,6 +322,30 @@ export default async function ListingDetailPage({
           author: a.author.username,
           createdAt: a.createdAt.toISOString(),
         }))}
+      />
+
+      {/* Below the announcements and above the reviews. It is the developer's
+          word like an announcement is, so it belongs on that side of the page —
+          but it is reference material rather than news, so it does not get to
+          sit at the top. Only the team is ever told which webhook is set, and
+          only in masked form: the stored URL is a credential. */}
+      <Changelog
+        listingId={listing.id}
+        listingName={listing.name}
+        entries={listing.changelog.map((entry) => ({
+          id: entry.id,
+          version: entry.version,
+          body: entry.body,
+          author: entry.author.username,
+          releasedAt: entry.releasedAt.toISOString(),
+        }))}
+        canPost={canPost}
+        isLead={access.isLead}
+        webhookMask={
+          access.isLead && listing.changelogWebhookUrl
+            ? maskWebhookUrl(listing.changelogWebhookUrl)
+            : null
+        }
       />
 
       <section style={{ marginTop: '3rem' }}>

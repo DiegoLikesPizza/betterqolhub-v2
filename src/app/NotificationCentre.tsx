@@ -129,14 +129,19 @@ export default function NotificationCentre({
 
           {feed.items.length === 0 ? (
             <p className="notif-empty">
-              Follow a listing and its developer&rsquo;s announcements show up here.
+              Follow a listing and its releases and announcements show up here.
             </p>
           ) : (
             <ul className="notif-list">
               {feed.items.map((n) => (
                 <li key={n.id} className={`notif-item${n.unread ? ' notif-item-unread' : ''}`}>
                   <Link href={`/listings/${n.listingId}`} onClick={() => setOpen(false)}>
-                    <span className="notif-listing">{n.listingName}</span>
+                    <span className="notif-listing">
+                      {n.listingName}
+                      {n.kind === 'release' && (
+                        <span className="notif-tag">Release</span>
+                      )}
+                    </span>
                     <span className="notif-body">{n.body}</span>
                     <time className="notif-time" dateTime={n.createdAt}>
                       {new Date(n.createdAt).toLocaleDateString(undefined, {

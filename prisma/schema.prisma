@@ -170,6 +170,7 @@ model User {
   passwordReset PasswordReset?
 
   announcements Announcement[]
+  changelog     ChangelogEntry[]
   follows       Follow[]
 
   /// Teams this user develops with. Granted by an admin or by a team lead, so
@@ -404,13 +405,77 @@ model Listing {
   /// accusation is not something to publish under the hub's name.
   unlistedReason String?
 
+  /// Discord webhook this listing's releases are mirrored to, or null.
+  ///
+  /// Set by the team so their own server gets a post whenever they publish a
+  /// release here. Deliberately per listing rather than per team: a studio with
+  /// several clients has a channel per client.
+  ///
+  /// This is a credential — whoever holds the URL can post into that channel —
+  /// so it is never sent back to the browser in full; see maskWebhookUrl in
+  /// src/lib/discord-webhook.ts. What may be stored here is restricted to real
+  /// Discord webhook endpoints by parseWebhookUrl, because the server fetches
+  /// this URL: an arbitrary one would make this field a way to aim the server at
+  /// anything it can reach.
+  changelogWebhookUrl String?
+
   reviews       Review[]
   stats         ListingStat[]
   announcements Announcement[]
+  changelog     ChangelogEntry[]
   followers     Follow[]
 
   @@index([category])
   @@index([teamId])
+}
+
+/// One released version of a listing, as its developers described it.
+///
+/// Separate from Announcement rather than an optional `version` column on it,
+/// because the two are read for different reasons and at different times: an
+/// announcement is news that goes stale ("we are down tonight"), a changelog
+/// entry is a permanent record someone scrolls back through to find when a bug
+/// was fixed. Keeping them in one table would mean every changelog view had to
+/// remember to filter, and the version history would be interleaved with
+/// outages.
+///
+/// Not put through the change-request queue, for the same reason announcements
+/// are not: release notes that need an admin to approve them before they appear
+/// would be useless on the day of the release, and unlike the listing's own
+/// description these are plainly attributed to the developer and move no rating.
+model ChangelogEntry {
+  id        String  @id @default(cuid())
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  /// Cascade, like Announcement: an unattributed release note on a site that
+  /// sells independent vetting is worse than none.
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  /// Free text — "v2.4.1", "1.8.9 build 3", "Season 4". Deliberately not parsed
+  /// into numbers: this space mixes semver, Minecraft versions and build tags,
+  /// and a structured column would either lose information or force developers
+  /// to lie about their own versioning.
+  version String
+  /// Markdown, rendered by src/lib/markdown.tsx. Unlike an announcement — which
+  /// is one plain-text paragraph — release notes are a bullet list in every
+  /// project that keeps one, so the formatting earns its place here.
+  body    String
+
+  /// When the release happened, which is not always when it was typed up. Set by
+  /// the publisher, defaulting to now.
+  releasedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  /// Two orderings, because the two readers disagree about what "newest" means.
+  /// The listing page shows the version history, which is ordered by when each
+  /// release shipped. The notification feed asks what has appeared since someone
+  /// last looked, which is `createdAt` — see getNotifications for why a
+  /// backfilled entry must not be sorted by the date printed on it.
+  @@index([listingId, releasedAt])
+  @@index([listingId, createdAt])
 }
 
 /// A note published by a listing's verified owner — a release, an outage, a
