@@ -14,7 +14,7 @@ import {
   type PricingKey,
 } from '@/lib/pricing';
 import { requireAdmin } from '@/lib/authz';
-import { MAX_FEATURES_LENGTH } from '@/lib/markdown';
+import { MAX_FEATURES_LENGTH, normaliseLineEndings } from '@/lib/markdown';
 import { MAX_UNLIST_REASON_LENGTH } from '@/lib/moderation';
 import {
   DISCORD_ID_PATTERN,
@@ -54,7 +54,9 @@ function readListingForm(formData: FormData): ListingInput | { error: string } {
   const secondaryUrl = String(formData.get('secondaryUrl') ?? '').trim();
   const urlLabel = String(formData.get('urlLabel') ?? '').trim();
   const secondaryUrlLabel = String(formData.get('secondaryUrlLabel') ?? '').trim();
-  const features = String(formData.get('features') ?? '').trim();
+  // Normalised before it is measured: a textarea submits CRLF, so the raw value
+  // is longer than what the writer typed and the counter showed.
+  const features = normaliseLineEndings(String(formData.get('features') ?? '')).trim();
 
   if (!name || !description || !url) {
     return { error: 'Name, description and primary link are required.' };

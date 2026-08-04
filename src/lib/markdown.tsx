@@ -179,5 +179,37 @@ export function renderMarkdown(source: string | null | undefined): ReactNode {
   });
 }
 
-/** Cap on the feature list. Generous for a real one, short of an essay. */
-export const MAX_FEATURES_LENGTH = 4000;
+/**
+ * Normalises line endings on text submitted from a `<textarea>`.
+ *
+ * The HTML form-submission rules turn every newline in a textarea into CRLF,
+ * so what the server receives is one character longer per line than what the
+ * writer typed and the character counter beside the field showed. On a 4 000
+ * limit nobody noticed; on a long feature list it means a list that reads as
+ * 100 000 characters in the browser arrives as 100 900 and is refused with a
+ * message that appears to contradict the counter.
+ *
+ * Applied before both the length check and the write, so the stored text is
+ * exactly what was typed. Rendering never depended on this — parseBlocks
+ * normalises too — but a database full of stray CRs is a trap for anything that
+ * later reads the column without doing the same.
+ */
+export function normaliseLineEndings(raw: string): string {
+  return raw.replace(/\r\n?/g, '\n');
+}
+
+/**
+ * Cap on the feature list.
+ *
+ * Raised from 4 000 after a developer hit it: a client with a few dozen
+ * features, each with a line of explanation, runs past 4 000 characters long
+ * before it stops being a feature list and starts being an essay.
+ *
+ * The ceiling is now set by what the page can carry rather than by taste. The
+ * list is rendered into the listing page's HTML — collapsed, but present — so
+ * its length is paid by every visitor to that listing. 100 000 is the point at
+ * which that cost is still measured in tens of kilobytes, and it stays inside
+ * the 1 MB body limit Next puts on a Server Action even if every character is
+ * a four-byte one.
+ */
+export const MAX_FEATURES_LENGTH = 100_000;

@@ -20,7 +20,7 @@ import {
 } from '@/lib/pricing';
 import { notifyListing, notifyChangeRequest } from '@/lib/discord-bot';
 import { MAX_LINK_LABEL_LENGTH } from '@/lib/categories';
-import { MAX_FEATURES_LENGTH } from '@/lib/markdown';
+import { MAX_FEATURES_LENGTH, normaliseLineEndings } from '@/lib/markdown';
 
 export type ChangeRequestState = { ok?: boolean; message?: string } | undefined;
 
@@ -35,7 +35,9 @@ function readSnapshot(
   const secondaryUrl = String(formData.get('secondaryUrl') ?? '').trim();
   const urlLabel = String(formData.get('urlLabel') ?? '').trim();
   const secondaryUrlLabel = String(formData.get('secondaryUrlLabel') ?? '').trim();
-  const features = String(formData.get('features') ?? '').trim();
+  // See the admin action: a textarea submits CRLF, so this is normalised before
+  // it is measured against the limit the writer was shown.
+  const features = normaliseLineEndings(String(formData.get('features') ?? '')).trim();
 
   if (!name || !description || !url) {
     return { error: 'Name, description and primary link are required.' };

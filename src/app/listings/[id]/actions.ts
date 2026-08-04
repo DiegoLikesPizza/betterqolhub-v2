@@ -18,6 +18,7 @@ import {
   sendChangelogWebhook,
   sendWebhookTest,
 } from '@/lib/discord-webhook';
+import { normaliseLineEndings } from '@/lib/markdown';
 import { isValidRating, MAX_BODY_LENGTH } from '@/lib/reviews';
 import { notifyReview, notifyAnnouncement } from '@/lib/discord-bot';
 import {
@@ -290,7 +291,9 @@ export async function publishChangelog(
   }
 
   const version = String(formData.get('version') ?? '').trim();
-  const body = String(formData.get('body') ?? '').trim();
+  // Normalised before measuring: a textarea submits CRLF, so the raw value runs
+  // one character per line longer than the counter beside the field showed.
+  const body = normaliseLineEndings(String(formData.get('body') ?? '')).trim();
 
   if (!version) {
     return { ok: false, message: 'Give the release a version.' };
