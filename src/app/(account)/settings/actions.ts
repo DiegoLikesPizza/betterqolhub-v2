@@ -6,6 +6,15 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/authz';
 import { requestDiscordDm } from '@/lib/discord-bot';
+import {
+  accountKey,
+  checkRateLimit,
+  clearRateLimit,
+  clientIp,
+  ipKey,
+  recordAttempt,
+  retryAfterMessage,
+} from '@/lib/rate-limit';
 
 // Excludes characters that are easy to misread when retyping from a DM.
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -43,6 +52,24 @@ export async function startDiscordLink(
   if (!/^[a-zA-Z0-9._]{2,32}$/.test(discordUsername)) {
     return { step: 'error', message: 'That does not look like a Discord username.' };
   }
+
+  // Each of these sends a DM to a Discord account that need not be the caller's.
+  // Unlimited, that is a way to make our bot message strangers on request, which
+  // is a good way to lose the bot. Keyed to the account rather than only the IP,
+  // because signing in is what makes it possible at all.
+  const ip = await clientIp();
+  const buckets = [accountKey(user.id), ipKey(ip)];
+
+  for (const bucket of buckets) {
+    const verdict = await checkRateLimit('discordRequest', bucket);
+    if (!verdict.allowed) {
+      return {
+        step: 'error',
+        message: `Too many link requests. ${retryAfterMessage(verdict.retryAfterSeconds)}`,
+      };
+    }
+  }
+  for (const bucket of buckets) await recordAttempt('discordRequest', bucket);
 
   const code = generateCode();
 
@@ -95,6 +122,21 @@ export async function confirmDiscordLink(
   const user = await requireUser();
   const entered = String(formData.get('code') ?? '').trim().toUpperCase();
 
+  // Above the per-link attempt counter for the same reason as the reset codes:
+  // on its own, that counter is escaped by requesting a new code.
+  const ip = await clientIp();
+  const buckets = [accountKey(user.id), ipKey(ip)];
+
+  for (const bucket of buckets) {
+    const verdict = await checkRateLimit('discordVerify', bucket);
+    if (!verdict.allowed) {
+      return {
+        step: 'error',
+        message: `Too many attempts. ${retryAfterMessage(verdict.retryAfterSeconds)}`,
+      };
+    }
+  }
+
   const pending = await prisma.discordLink.findUnique({ where: { userId: user.id } });
   if (!pending) {
     return { step: 'error', message: 'No pending link. Start again.' };
@@ -113,6 +155,7 @@ export async function confirmDiscordLink(
       where: { userId: user.id },
       data: { attempts: { increment: 1 } },
     });
+    for (const bucket of buckets) await recordAttempt('discordVerify', bucket);
     const left = MAX_ATTEMPTS - (pending.attempts + 1);
     return {
       step: 'awaiting-code',
@@ -140,6 +183,8 @@ export async function confirmDiscordLink(
     }
     return { step: 'error', message: 'Could not finish linking. Try again.' };
   }
+
+  for (const bucket of buckets) await clearRateLimit('discordVerify', bucket);
 
   revalidatePath('/settings');
   return { step: 'linked', message: `Linked to ${pending.discordUsername}.` };

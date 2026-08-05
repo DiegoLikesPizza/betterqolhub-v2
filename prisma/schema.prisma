@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   // Hosted Postgres (Neon, Supabase, ...) serves queries through a connection
   // pooler that cannot run DDL. `directUrl` is used by `prisma migrate` only;
   // set it to the unpooled connection string. Locally the two are the same.
@@ -99,10 +99,10 @@ model ModpackMod {
   modpackId String
   modpack   Modpack @relation(fields: [modpackId], references: [id], onDelete: Cascade)
 
-  name    String
-  version String
+  name        String
+  version     String
   /// Modrinth project id, or null when the pack ships the jar directly.
-  modrinth String?
+  modrinth    String?
   /// True for jars in the .mrpack's overrides/ — files Modrinth will not host,
   /// which on this site is a warning worth showing rather than a detail.
   bundledOnly Boolean @default(false)
@@ -152,7 +152,7 @@ model User {
   /// visible and keep counting towards ratings — they were written before the
   /// abuse and deleting them would silently rewrite listings' scores. Removing
   /// an individual bad review is a separate, deliberate act.
-  reviewBannedAt DateTime?
+  reviewBannedAt  DateTime?
   /// Admin-facing note on why. Never shown to the banned user or the public: it
   /// is moderation shorthand, not a published accusation.
   reviewBanReason String?
@@ -321,7 +321,7 @@ model ListingChangeRequest {
   status       ChangeRequestStatus @default(PENDING)
   reviewedAt   DateTime?
   reviewedById String?
-  reviewedBy   User?     @relation("ChangeRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedBy   User?               @relation("ChangeRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
   /// Why an admin rejected it. Shown to the team — unlike a moderation note,
   /// this is feedback they are meant to act on.
   decisionNote String?
@@ -335,13 +335,13 @@ model ListingChangeRequest {
 }
 
 model Listing {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  category     String
-  developer    String?
-  url          String
-  secondaryUrl String?
+  id                String   @id @default(cuid())
+  name              String
+  description       String
+  category          String
+  developer         String?
+  url               String
+  secondaryUrl      String?
   /// What the link button says, or null to derive it from the URL.
   ///
   /// Auto-detection reads the hostname, which is right until a developer points
@@ -360,11 +360,11 @@ model Listing {
   /// subset rather than emitting HTML — see there for why that distinction is
   /// what makes developer-authored text safe to display.
   features          String?
-  isTrusted    Boolean  @default(true)
+  isTrusted         Boolean  @default(true)
   /// Nullable rather than defaulting to FREE: the existing listings have no
   /// pricing recorded, and claiming they are free would be inventing data about
   /// real entries. Unset simply shows no badge until an admin sets one.
-  pricing      Pricing?
+  pricing           Pricing?
   /// What a paid listing actually costs, as free text — "5€ / month", "$15
   /// lifetime", "from 3€/mo". Deliberately not a number plus a currency: prices
   /// here mix currencies, billing periods and tiers, so a structured column
@@ -373,9 +373,9 @@ model Listing {
   ///
   /// Only meaningful when `pricing` is PAID or FREEMIUM; see
   /// src/lib/pricing.ts, which clears it otherwise.
-  price        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  price             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   /// The development team behind this listing, or null while nobody claims it.
   ///
@@ -486,9 +486,9 @@ model ChangelogEntry {
 /// product and must never move the score. Mixing them in one table would make
 /// that separation a matter of remembering to filter.
 model Announcement {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   listingId String
-  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   /// Cascade: if the account goes, so do its posts. An unattributed vendor
   /// announcement on a site that sells independent vetting is worse than none.
@@ -539,9 +539,9 @@ model PageStat {
 }
 
 model Review {
-  id      String @id @default(cuid())
-  rating  Int // 1-5, validated in application code
-  body    String
+  id     String @id @default(cuid())
+  rating Int // 1-5, validated in application code
+  body   String
 
   userId    String
   listingId String
@@ -555,4 +555,37 @@ model Review {
   // One review per user per listing; posting again edits the existing one.
   @@unique([userId, listingId])
   @@index([listingId])
+}
+
+/// One rate-limit bucket: a scope, a subject, and how many times it has tried.
+///
+/// In the database rather than in process memory because a bucket that resets on
+/// deploy is not a limit — it is a suggestion, and this box restarts the app for
+/// every release. It also keeps counting correctly if the app is ever run as
+/// more than one process.
+///
+/// Rows are disposable. Nothing reads a bucket once its window has passed, and
+/// `sweepRateLimits` in src/lib/rate-limit.ts drops the stale ones, so losing
+/// this table costs nothing beyond forgetting who was mid-cooldown.
+model RateLimit {
+  /// Which limit this is — see LIMITS in src/lib/rate-limit.ts.
+  scope String
+
+  /// Who is being limited: an IP, an account, or both. Hashed by the caller, so
+  /// this table cannot be read as a log of who tried to sign in and from where.
+  key String
+
+  /// Attempts inside the current window. Cleared by a success, not by time.
+  attempts Int @default(0)
+
+  /// When the current window opened. A window that has fully elapsed starts
+  /// over rather than being extended.
+  windowStart DateTime @default(now())
+
+  /// Set once the limit is passed. The cooldown lengthens with each further
+  /// attempt, so a mistyped password costs a moment and a script costs an hour.
+  blockedUntil DateTime?
+
+  @@id([scope, key])
+  @@index([windowStart])
 }

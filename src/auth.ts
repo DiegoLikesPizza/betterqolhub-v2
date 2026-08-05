@@ -2,6 +2,14 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+import {
+  accountKey,
+  checkRateLimit,
+  clearRateLimit,
+  clientIp,
+  ipKey,
+  recordAttempt,
+} from '@/lib/rate-limit';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   /**
@@ -34,12 +42,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
+        // Two buckets. The per-account one stops a single account being ground
+        // through a word list; the per-IP one stops the same script spreading
+        // itself thinly across many accounts, which the first would never see.
+        const ip = await clientIp();
+        const buckets = [accountKey(username), ipKey(ip)];
+
+        for (const bucket of buckets) {
+          const verdict = await checkRateLimit('login', bucket);
+          // Checked before the lookup and the bcrypt compare: a blocked caller
+          // must not be able to spend our CPU, and must not learn from timing
+          // whether the username exists.
+          if (!verdict.allowed) return null;
+        }
+
         const user = await prisma.user.findUnique({ where: { username } });
-        if (!user) return null;
+
+        // A missing user still counts. Otherwise enumeration is free: guesses at
+        // usernames that do not exist would never be limited, and the difference
+        // between "limited" and "not limited" is itself the answer.
+        if (!user) {
+          for (const bucket of buckets) await recordAttempt('login', bucket);
+          return null;
+        }
 
         const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
+        if (!valid) {
+          for (const bucket of buckets) await recordAttempt('login', bucket);
+          return null;
+        }
 
+        for (const bucket of buckets) await clearRateLimit('login', bucket);
         return { id: user.id, name: user.username, role: user.role };
       },
     }),

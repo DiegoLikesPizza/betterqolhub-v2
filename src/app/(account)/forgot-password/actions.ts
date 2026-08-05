@@ -5,6 +5,15 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { passwordProblem } from '@/lib/account';
 import { requestPasswordResetDm } from '@/lib/discord-bot';
+import {
+  accountKey,
+  checkRateLimit,
+  clearRateLimit,
+  clientIp,
+  ipKey,
+  recordAttempt,
+  retryAfterMessage,
+} from '@/lib/rate-limit';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 6;
@@ -37,6 +46,25 @@ export async function requestReset(
   if (!username) {
     return { step: 'request', message: 'Enter your username.' };
   }
+
+  // This one sends a DM to someone else's Discord, so the limit protects them as
+  // much as us. Counted per account and per source, and counted whether or not
+  // anything was actually sent — otherwise guessing at usernames that do not
+  // exist would be unlimited, which is the enumeration NEUTRAL_RESPONSE exists
+  // to prevent.
+  const ip = await clientIp();
+  const buckets = [accountKey(username), ipKey(ip)];
+
+  for (const bucket of buckets) {
+    const verdict = await checkRateLimit('resetRequest', bucket);
+    if (!verdict.allowed) {
+      return {
+        step: 'request',
+        message: `Too many reset requests. ${retryAfterMessage(verdict.retryAfterSeconds)}`,
+      };
+    }
+  }
+  for (const bucket of buckets) await recordAttempt('resetRequest', bucket);
 
   const user = await prisma.user.findUnique({
     where: { username },
@@ -81,6 +109,23 @@ export async function completeReset(
     return { step: 'code', username, message: problem };
   }
 
+  // The per-reset `attempts` counter below already burns a code after five
+  // wrong guesses. This is the layer above it: without one, an attacker can
+  // request a fresh code and keep guessing indefinitely, five at a time.
+  const ip = await clientIp();
+  const buckets = [accountKey(username), ipKey(ip)];
+
+  for (const bucket of buckets) {
+    const verdict = await checkRateLimit('resetVerify', bucket);
+    if (!verdict.allowed) {
+      return {
+        step: 'code',
+        username,
+        message: `Too many attempts. ${retryAfterMessage(verdict.retryAfterSeconds)}`,
+      };
+    }
+  }
+
   const user = await prisma.user.findUnique({
     where: { username },
     select: { id: true, passwordReset: true },
@@ -91,7 +136,10 @@ export async function completeReset(
   // three would otherwise confirm whether an account exists.
   const invalid = { step: 'code' as const, username, message: 'That code is not valid.' };
 
-  if (!user || !pending) return invalid;
+  if (!user || !pending) {
+    for (const bucket of buckets) await recordAttempt('resetVerify', bucket);
+    return invalid;
+  }
 
   if (pending.expiresAt < new Date()) {
     await prisma.passwordReset.delete({ where: { userId: user.id } });
@@ -106,6 +154,7 @@ export async function completeReset(
       where: { userId: user.id },
       data: { attempts: { increment: 1 } },
     });
+    for (const bucket of buckets) await recordAttempt('resetVerify', bucket);
     return invalid;
   }
 
@@ -117,6 +166,13 @@ export async function completeReset(
     // Single use: consumed whether or not the sign-in that follows succeeds.
     prisma.passwordReset.delete({ where: { userId: user.id } }),
   ]);
+
+  // The right code proves this is the account's owner, so the failures that led
+  // here are not held against the sign-in they are about to make.
+  for (const bucket of buckets) {
+    await clearRateLimit('resetVerify', bucket);
+    await clearRateLimit('login', bucket);
+  }
 
   return { step: 'done', message: 'Password changed. You can sign in now.' };
 }

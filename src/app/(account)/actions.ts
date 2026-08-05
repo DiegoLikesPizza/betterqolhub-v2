@@ -7,6 +7,14 @@ import { signOut } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/authz';
 import { MIN_PASSWORD_LENGTH, USERNAME_PATTERN } from '@/lib/account';
+import {
+  checkRateLimit,
+  clientIp,
+  ipKey,
+  recordAttempt,
+  retryAfterMessage,
+  sweepRateLimits,
+} from '@/lib/rate-limit';
 
 export type AuthFormState = {
   ok?: boolean;
@@ -20,6 +28,14 @@ export async function register(
   const username = String(formData.get('username') ?? '').trim();
   const password = String(formData.get('password') ?? '');
   const confirm = String(formData.get('confirmPassword') ?? '');
+
+  // Per IP only: there is no account yet to attach a bucket to, and the thing
+  // worth slowing is one source creating accounts in bulk.
+  const bucket = ipKey(await clientIp());
+  const limit = await checkRateLimit('register', bucket);
+  if (!limit.allowed) {
+    return { ok: false, message: `Too many signups from here. ${retryAfterMessage(limit.retryAfterSeconds)}` };
+  }
 
   if (!USERNAME_PATTERN.test(username)) {
     return {
@@ -50,6 +66,14 @@ export async function register(
     }
     return { ok: false, message: 'Could not create the account. Try again.' };
   }
+
+  // Counted on success, not on failure: the thing being limited here is accounts
+  // created, and a bulk signup script's requests all succeed.
+  await recordAttempt('register', bucket);
+
+  // Somewhere has to tidy the table, and signups are rare enough to be a good
+  // place to do it without a scheduler.
+  await sweepRateLimits();
 
   return { ok: true, message: 'Account created. You can sign in now.' };
 }
