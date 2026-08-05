@@ -88,6 +88,23 @@ const WEBHOOK_TIMEOUT_MS = 5000;
 /** The site gold, as the integer Discord wants. Matches --gold in globals.css. */
 const EMBED_COLOUR = 0xffaa00;
 
+/**
+ * The release date, written out rather than sent as an embed `timestamp`.
+ *
+ * Discord renders a timestamp as a date *and* a time in the reader's zone, and a
+ * release only ever has a date behind it — the time shown would be whatever hour
+ * the row was written, or midnight for a backdated entry. UTC and a fixed locale
+ * so the text does not depend on the server's zone.
+ */
+function formatReleaseDate(date: Date): string {
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 function clamp(text: string, limit: number): string {
   return text.length <= limit ? text : `${text.slice(0, limit - 1)}…`;
 }
@@ -136,8 +153,7 @@ export async function sendChangelogWebhook(
             url: `${SITE_URL}/listings/${entry.listingId}`,
             description: clamp(entry.body, MAX_DESCRIPTION),
             color: EMBED_COLOUR,
-            timestamp: entry.releasedAt.toISOString(),
-            footer: { text: `Published by ${entry.author} on Better QOLHub` },
+            footer: { text: `Published by ${entry.author} on Better QOLHub · ${formatReleaseDate(entry.releasedAt)}` },
           },
         ],
       }),

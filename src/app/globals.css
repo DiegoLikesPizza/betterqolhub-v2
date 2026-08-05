@@ -1307,6 +1307,19 @@ select.toolbar-select { flex: 0 0 auto; width: auto; padding: 0.45rem 0.7rem; fo
   gap: 0.6rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+  /* The badge and the button are one strip, so they share a height instead of
+     each taking whatever its own font size and padding happen to produce — the
+     badge is set in small caps and would otherwise sit noticeably shorter. Only
+     here: .trust is drawn at its own size in the cards and the admin table. */
+  --action-height: 2.2rem;
+}
+.detail-head-actions .trust,
+.detail-head-actions .follow-btn {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: var(--action-height);
+  padding-block: 0;
 }
 
 /* Follow button ----------------------------------------------------------- */
