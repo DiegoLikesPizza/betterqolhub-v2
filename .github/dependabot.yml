@@ -1,0 +1,51 @@
+# Dependency updates, opened as pull requests.
+#
+# There is no CI on this repository, so nothing here is auto-merged and nothing
+# is verified before it reaches you — a Dependabot PR is a notification that an
+# update exists, and `npm run build` on your machine is still what says whether
+# it is safe. That is the reason for the low open-PR limits below: a queue of
+# twenty unverifiable PRs gets ignored, which is worse than not being told.
+
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+
+    # Security fixes are the point of this file; the weekly sweep is the
+    # secondary benefit. GitHub raises security PRs regardless of this schedule.
+    open-pull-requests-limit: 5
+
+    groups:
+      # One PR for the routine churn rather than fifteen. Patch and minor updates
+      # of packages that are already trusted are exactly the changes worth
+      # reviewing in a batch.
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+    ignore:
+      # Next and React majors are migrations, not updates — this project pins an
+      # exact Next version and its docs are read per-version from node_modules.
+      # A major arriving as a surprise PR would be noise; do those deliberately.
+      - dependency-name: next
+        update-types: [version-update:semver-major]
+      - dependency-name: react
+        update-types: [version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-major]
+
+    labels:
+      - dependencies
+
+    commit-message:
+      prefix: "deps"
+      include: scope
