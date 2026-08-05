@@ -7,6 +7,7 @@ import { recordPageHitFor, PAGE_KEYS } from '@/lib/stats';
 import { categoryLabel, isCategoryKey } from '@/lib/categories';
 import { SITE_DESCRIPTION } from '@/lib/site';
 import { parseFilters, PARAM } from '@/lib/listing-filters';
+import { CATALOGUE_LISTING_SELECT } from '@/lib/listing-select';
 import ListingsBrowser from './ListingsBrowser';
 
 export const revalidate = 0;
@@ -56,8 +57,10 @@ export default async function ListingsPage() {
     where: { unlistedAt: null },
     orderBy: { createdAt: 'desc' },
     // Only the ratings are needed for the grid; review bodies are loaded on the
-    // detail page.
-    include: { reviews: { select: { rating: true } } },
+    // detail page. The listing fields are an allowlist because the rows below
+    // are handed to a client component, which puts every one of them in the
+    // page source — `include` alone would send the whole row.
+    select: { ...CATALOGUE_LISTING_SELECT, reviews: { select: { rating: true } } },
   });
 
   // Filtering happens in the browser against the whole catalogue, so the page

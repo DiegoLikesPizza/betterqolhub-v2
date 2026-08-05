@@ -8,6 +8,7 @@ import {
   MAX_PRICE_LENGTH,
 } from '@/lib/pricing';
 import { notifyListing } from '@/lib/discord-bot';
+import { PUBLIC_LISTING_SELECT } from '@/lib/listing-select';
 
 const API_KEY = process.env.API_KEY;
 
@@ -30,6 +31,10 @@ export async function GET(request: Request) {
       // leaving them in would put back exactly what unlisting removes.
       where: { unlistedAt: null, ...(category ? { category } : {}) },
       orderBy: { createdAt: 'desc' },
+      // Never the whole row: this endpoint is unauthenticated, and without a
+      // projection it hands out every column the table grows, credentials
+      // included.
+      select: PUBLIC_LISTING_SELECT,
     });
     return NextResponse.json(listings, { status: 200 });
   } catch (error) {
