@@ -42,14 +42,65 @@ export type SortKey = (typeof SORTS)[number]['key'];
 export const DEFAULT_SORT: SortKey = 'rating';
 
 /**
- * How many reviews a listing needs before its average is treated as a ranking.
+ * How much evidence a listing's own average must outweigh before it is believed.
  *
- * Without a floor, "highest rated" is trivially gamed: one 5-star review would
- * outrank a listing holding 4.9 across fifty. Below the floor a listing is not
- * demoted for being *bad* — it is set aside for not being *known yet*, and still
- * sorts among its peers by rating.
+ * The ranking is a Bayesian average: every listing starts out assumed to be an
+ * ordinary listing, and its own reviews pull it away from that assumption in
+ * proportion to how many there are. This is the weight of that assumption,
+ * measured in reviews — at five, a listing with five reviews is ranked half on
+ * its own average and half on the catalogue's.
+ *
+ * It replaced a hard floor of three reviews, which had a cliff at exactly the
+ * wrong place: a third review could vault a listing over everything below it
+ * without a word of new information being added.
  */
-export const RATING_CONFIDENCE_MIN = 3;
+export const RATING_PRIOR_WEIGHT = 5;
+
+/**
+ * A listing's rank under "highest rated".
+ *
+ * `(count / (count + weight)) * average + (weight / (count + weight)) * mean` —
+ * the listing's own average and the catalogue's, mixed in proportion to how much
+ * evidence there is. One 5-star review barely moves off the catalogue mean;
+ * twenty reviews are believed almost entirely.
+ *
+ * Deliberately *not* `(average / 5) * sqrt(count)`, which was the other
+ * candidate. That grows without bound in the review count, so it ranks by
+ * popularity wearing a rating's clothes — on this catalogue it puts Taunahi
+ * (3.67 across 6) above Aether, GoofyAddons and NoammAddons, all sitting on a
+ * clean 5.00. Whatever "highest rated" means, it cannot mean that. This formula
+ * stays on the 1-5 scale, so the number it sorts by is still a rating someone
+ * could read out loud.
+ */
+export function ratingScore(
+  rating: RatingSummary,
+  catalogueMean: number,
+  weight: number = RATING_PRIOR_WEIGHT
+): number {
+  if (rating.average === null || rating.count === 0) return 0;
+  return (
+    (rating.count * rating.average + weight * catalogueMean) / (rating.count + weight)
+  );
+}
+
+/**
+ * The average review across the listings being ranked, weighted by review count.
+ *
+ * Read from the catalogue rather than fixed at 3.0, so the prior is whatever
+ * "ordinary" actually is here and moves as the catalogue does.
+ */
+export function catalogueMean(ratings: RatingSummary[]): number {
+  let reviews = 0;
+  let total = 0;
+  for (const r of ratings) {
+    if (r.average === null) continue;
+    reviews += r.count;
+    total += r.average * r.count;
+  }
+  // Nothing rated yet: the prior has nothing to say, and every score is 0
+  // regardless because each listing returns early above.
+  return reviews === 0 ? 0 : total / reviews;
+}
 
 function isSortKey(value: unknown): value is SortKey {
   return typeof value === 'string' && SORTS.some((s) => s.key === value);
@@ -202,14 +253,13 @@ export function sortListings<T extends FilterableListing>(
   listings: T[],
   sort: SortKey
 ): T[] {
-  // Thinly reviewed listings sort after well-reviewed ones under "highest
-  // rated", and unrated ones last of all. No reviews is missing data, not a zero
-  // score, and ranking those beneath 1-star entries would read as a judgement
-  // nobody made — but neither should a single 5-star review top the catalogue.
-  // Within each tier the average still decides.
-  const tier = (r: RatingSummary) =>
-    r.average === null ? 0 : r.count >= RATING_CONFIDENCE_MIN ? 2 : 1;
-  const rank = (r: RatingSummary) => r.average ?? 0;
+  // Unrated listings stay last under "highest rated". No reviews is missing
+  // data, not a zero score, and ranking those beneath 1-star entries would read
+  // as a judgement nobody made. Everything that *has* been rated is ordered by
+  // one continuous score, so there is no longer a rank cliff at the nth review.
+  const mean = catalogueMean(listings.map((l) => l.rating));
+  const rated = (r: RatingSummary) => (r.average === null || r.count === 0 ? 0 : 1);
+  const rank = (r: RatingSummary) => ratingScore(r, mean);
 
   return [...listings].sort((a, b) => {
     switch (sort) {
@@ -217,7 +267,7 @@ export function sortListings<T extends FilterableListing>(
         return a.name.localeCompare(b.name);
       case 'rating':
         return (
-          tier(b.rating) - tier(a.rating) ||
+          rated(b.rating) - rated(a.rating) ||
           rank(b.rating) - rank(a.rating) ||
           // A tie on both is broken by review count, so the better-evidenced of
           // two equally rated listings comes first.
