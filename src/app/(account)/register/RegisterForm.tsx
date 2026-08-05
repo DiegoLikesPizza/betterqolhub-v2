@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { register, type AuthFormState } from '../actions';
+import { safeCallbackUrl } from '@/lib/callback-url';
 
 /**
  * @param callbackUrl Where to land after signing up. Someone who arrived from a
@@ -28,13 +29,18 @@ export default function RegisterForm({ callbackUrl }: { callbackUrl?: string }) 
     signIn('credentials', { username, password, redirect: false }).then((res) => {
       if (res?.error) {
         // Account exists but auto sign-in failed — send them to sign in manually.
+        // Sanitised before it is handed on, not only when it is followed: the
+        // login page would reject a hostile value anyway, but there is no reason
+        // to put one back into a URL bar on the way there.
         router.push(
-          callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/login'
+          callbackUrl
+            ? `/login?callbackUrl=${encodeURIComponent(safeCallbackUrl(callbackUrl))}`
+            : '/login'
         );
       } else {
         // Only same-site paths are followed, so a crafted ?callbackUrl= cannot
         // bounce a freshly created account off to another host.
-        router.push(callbackUrl?.startsWith('/') ? callbackUrl : '/');
+        router.push(safeCallbackUrl(callbackUrl));
         router.refresh();
       }
     });

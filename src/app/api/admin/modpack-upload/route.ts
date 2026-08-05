@@ -4,7 +4,13 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { isAdmin } from '@/lib/authz';
 import { isFileKind, BUNDLED_GROUP, DEFAULT_GROUP, type ModpackFileKind } from '@/lib/modpack';
-import { DOWNLOAD_DIR, removeStored, storedFilename, storeUpload } from '@/lib/modpack-storage';
+import {
+  DOWNLOAD_DIR,
+  removeStored,
+  storedFilename,
+  storeUpload,
+  UploadTooLargeError,
+} from '@/lib/modpack-storage';
 import { parseMrpack, enrichFromModrinth, MrpackError, type ParsedMod } from '@/lib/mrpack';
 
 // Uploading a pack file.
@@ -18,7 +24,11 @@ import { parseMrpack, enrichFromModrinth, MrpackError, type ParsedMod } from '@/
 // to be at least as large as the biggest pack, or the upload is rejected before
 // Next ever sees it.
 
-/** Refuses obvious nonsense early, from the header, before anything is written. */
+/**
+ * The upload ceiling, enforced twice: once from `Content-Length` so obvious
+ * nonsense is refused before anything is written, and again while the body is
+ * streamed, because that header is only a claim the client makes.
+ */
 const MAX_UPLOAD_BYTES = 512 * 1024 * 1024;
 
 function fail(status: number, error: string): Response {
@@ -101,8 +111,13 @@ export async function POST(request: Request): Promise<Response> {
 
   let bytes: number;
   try {
-    bytes = await storeUpload(filename, request.body);
+    bytes = await storeUpload(filename, request.body, MAX_UPLOAD_BYTES);
   } catch (error) {
+    // A body that ran past the limit is the client's answer to give, and the
+    // partial file is already gone — see storeUpload.
+    if (error instanceof UploadTooLargeError) {
+      return fail(413, `That file is larger than the ${MAX_UPLOAD_BYTES / 1024 / 1024} MB limit.`);
+    }
     console.error('[modpacks] upload failed', error);
     return fail(500, 'Writing the file failed. Check the server has disk space.');
   }

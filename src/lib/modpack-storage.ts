@@ -6,10 +6,27 @@
 
 import { mkdir, rename, rm, stat } from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
-import { Readable } from 'node:stream';
+import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import { FILE_KINDS, type ModpackFileKind } from '@/lib/modpack';
+
+/**
+ * Thrown when an upload runs past the byte limit mid-stream.
+ *
+ * Its own type so the route can answer 413 rather than the 500 every other
+ * write failure earns — "your file is too big" is a different conversation from
+ * "the disk is broken".
+ */
+export class UploadTooLargeError extends Error {
+  limit: number;
+
+  constructor(limit: number) {
+    super(`Upload exceeded the ${limit} byte limit.`);
+    this.name = 'UploadTooLargeError';
+    this.limit = limit;
+  }
+}
 
 /**
  * Absolute path nginx's `location /downloads/` aliases.
@@ -48,18 +65,43 @@ export function storedFilename(slug: string, kind: ModpackFileKind, version: str
  * Writes to a temporary name and renames on success, so an interrupted upload
  * can never leave a half-file sitting at the URL the download button points at.
  * The rename is atomic within the directory.
+ *
+ * `maxBytes` is counted here rather than trusted from `Content-Length`, because
+ * that header is a claim the client makes: a chunked request need not send one
+ * at all, and one that does can lie. The header check upstream is still worth
+ * keeping — it refuses an oversized upload before a byte is written — but it
+ * cannot be the only limit, or the disk is one dishonest request from full.
  */
 export async function storeUpload(
   filename: string,
-  body: ReadableStream<Uint8Array>
+  body: ReadableStream<Uint8Array>,
+  maxBytes: number
 ): Promise<number> {
   await mkdir(DOWNLOAD_DIR, { recursive: true });
 
   const target = path.join(DOWNLOAD_DIR, filename);
   const temporary = `${target}.part`;
 
+  let written = 0;
+  const limit = new Transform({
+    transform(chunk: Buffer, _encoding, done) {
+      written += chunk.length;
+      if (written > maxBytes) {
+        // Fails the pipeline, which destroys both ends: the source stops being
+        // read and the partial file is removed below.
+        done(new UploadTooLargeError(maxBytes));
+        return;
+      }
+      done(null, chunk);
+    },
+  });
+
   try {
-    await pipeline(Readable.fromWeb(body as Parameters<typeof Readable.fromWeb>[0]), createWriteStream(temporary));
+    await pipeline(
+      Readable.fromWeb(body as Parameters<typeof Readable.fromWeb>[0]),
+      limit,
+      createWriteStream(temporary)
+    );
     await rename(temporary, target);
   } catch (error) {
     await rm(temporary, { force: true });

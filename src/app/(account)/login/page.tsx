@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
+import { safeCallbackUrl } from '@/lib/callback-url';
 
 function LoginForm() {
   const router = useRouter();
@@ -32,8 +33,9 @@ function LoginForm() {
     }
 
     // Only allow same-origin callbacks, so a crafted ?callbackUrl= cannot turn
-    // the login page into an open redirect.
-    router.push(callbackUrl.startsWith('/') ? callbackUrl : '/');
+    // the login page into an open redirect. See safeCallbackUrl for why a
+    // leading slash is not enough on its own.
+    router.push(safeCallbackUrl(callbackUrl));
     router.refresh();
   }
 
