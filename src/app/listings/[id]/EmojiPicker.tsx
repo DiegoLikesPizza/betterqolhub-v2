@@ -55,7 +55,16 @@ export default function EmojiPicker({
     }
     // A fixed panel does not travel with its trigger, so it closes rather than
     // hanging in the wrong place.
-    function onMove() {
+    //
+    // Except when the scrolling is the panel's own list. This listener is on
+    // window in the capture phase, which sees scroll events from every element
+    // on the way down — including .emoji-scroll — so scrolling the emoji list
+    // closed the picker on the first wheel tick, which read as "the list does
+    // not scroll". Scroll does not bubble, but capture still reaches it, so the
+    // target has to be checked rather than relying on the phase.
+    function onMove(event: Event) {
+      const target = event.target as Node | null;
+      if (target && panelRef.current?.contains(target)) return;
       setOpen(false);
     }
 
